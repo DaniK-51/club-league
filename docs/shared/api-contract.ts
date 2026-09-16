@@ -39,13 +39,28 @@ export interface ApiSuccess<T> { data: T }
 export interface ApiError { error: { code: string; message: string } }
 
 // === Endpoints (Основные) ===
+// POST   /api/auth/sso/callback        -> { code } -> { accessToken, refreshToken, user }
+// POST   /api/auth/refresh             -> { refreshToken } -> LoginResponse
+// GET    /api/users/me                 -> MeResponse
+// GET    /api/criteria?semester=&category= -> CriteriaOut[]  (public v2 catalog)
 // POST   /api/reports                  -> CreateReportDTO -> ReportResponse
+// GET    /api/reports                  -> ReportResponse[]
+// GET    /api/reports/:id              -> ReportResponse
 // PATCH  /api/reports/:id              -> (Лидер обновляет черновик)
+// POST   /api/reports/:id/submit       -> DRAFT/CHANGES_REQUIRED → ON_MODERATION
+// DELETE /api/reports/:id              -> soft-delete only DRAFT
+// GET    /api/reports/:id/comments     -> CommentEntry[] (from audit_logs)
 // PATCH  /api/reports/:id/moderate     -> ModerateReportDTO -> ReportResponse (Только модератор)
 // POST   /api/reports/:id/dispute      -> { comment: string } -> ReportResponse (Лидер оспаривает APPROVED)
+// POST   /api/reports/:id/complete     -> APPROVED → COMPLETED
+// POST   /api/reports/archive?period=  -> batch COMPLETED/CLOSED → ARCHIVED (модератор)
 // GET    /api/rating?semester=2026-fall -> { clubs: { id, name, totalPoints, breakdown }[] }
-// POST   /api/admin/sync/force         -> { semester: string } -> { status: 'queued' } (Только модератор)
+// POST   /api/admin/sync/force         -> { semester?: string } -> { status: 'queued' } (Только модератор)
+// GET    /api/admin/sync/status        -> SyncStatus
 // POST   /api/admin/sudo               -> SudoActionDTO -> { success: true } (Только модератор с can_sudo)
+// GET    /api/admin/rules/:id          -> RuleOut (модератор)
+// PATCH  /api/admin/rules/:id          -> UpdateRuleDTO -> RuleOut (модератор; config валидируется)
+// GET    /api/admin/audit?entityType=&entityId=&limit=&offset= -> AuditListResponse (модератор)
 
 // === Error Codes ===
 export enum ErrorCode {
@@ -60,6 +75,8 @@ export enum ErrorCode {
   DOMAIN_NOT_ALLOWED = 'DOMAIN_NOT_ALLOWED',
   DUPLICATE_LINK = 'DUPLICATE_LINK',
   INVALID_ACTIVITY_DATE = 'INVALID_ACTIVITY_DATE', // Дата в будущем или слишком старая
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  RATE_LIMITED = 'RATE_LIMITED',
   
   // Business Logic
   REPORT_NOT_FOUND = 'REPORT_NOT_FOUND',

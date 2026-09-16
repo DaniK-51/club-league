@@ -95,8 +95,9 @@ def create_app() -> FastAPI:
             {"name": "users", "description": "Current user profile"},
             {"name": "reports", "description": "Report CRUD, submit, comments thread"},
             {"name": "moderation", "description": "Approve / changes / close / dispute / complete / archive"},
-            {"name": "admin", "description": "Sudo mode and Yandex sync control"},
+            {"name": "admin", "description": "Sudo mode, Yandex sync, rules CRUD, audit"},
             {"name": "rating", "description": "Public club rating"},
+            {"name": "criteria", "description": "Active v2 criteria catalog"},
         ],
         docs_url="/docs",
         redoc_url="/redoc",
@@ -178,6 +179,7 @@ def create_app() -> FastAPI:
     app.include_router(reports_endpoints.router, prefix=settings.api_prefix)
     app.include_router(moderation_endpoints.router, prefix=settings.api_prefix)
     app.include_router(admin_endpoints.router, prefix=settings.api_prefix)
+    app.include_router(admin_endpoints.criteria_router, prefix=settings.api_prefix)
     app.include_router(rating_endpoints.router, prefix=settings.api_prefix)
 
     from fastapi.openapi.utils import get_openapi
