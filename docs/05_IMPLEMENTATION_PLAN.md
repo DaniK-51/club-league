@@ -3,7 +3,7 @@
 ## Backend (/apps/api)
 - [x] **Шаг 1:** Инициализация FastAPI, SQLAlchemy, подключение к PostgreSQL. Настройка миграций (Alembic) по `schema.prisma`.
 - [x] **Шаг 2:** Интеграция SSO (OAuth2/SAML) + Policy-based авторизация (модуль `policies/`). Dev: `apps/mock-sso` (roles/sudo only in our DB).
-- [ ] **Шаг 3:** Реализация `AuditService` с криптографической цепочкой (hash chain) и триггерами БД (REVOKE).
+- [x] **Шаг 3:** Реализация `AuditService` с криптографической цепочкой (hash chain) и триггерами БД (REVOKE). `seq` identity + advisory lock; verify script.
 - [ ] **Шаг 4:** Ядро `RulesEngine`: реализация 3 базовых типов правил (tiered, scale, binary) + валидация JSONB через Pydantic.
 - [ ] **Шаг 5:** Полный CRUD отчётов (`reports.py`) с валидацией whitelist ссылок и soft warning дедлайна (7 дней).
 - [ ] **Шаг 6:** Логика модерации: переходы статусов, расчёт `finalPoints`, применение капов (включая combined cap C4+C5).

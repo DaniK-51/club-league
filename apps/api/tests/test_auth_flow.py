@@ -3,27 +3,28 @@ from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete
+from sqlalchemy import delete, text
 from src.core.database import get_session_factory
 from src.models.entities import Club, ClubLeader, User
 from src.models.enums import UserRole
 from src.services.sso_client import SSOProfile
 
 
-@pytest.fixture
-async def clean_users() -> AsyncIterator[None]:
+async def _wipe_dev_data() -> None:
     factory = get_session_factory()
     async with factory() as session:
+        await session.execute(text("TRUNCATE sudo_actions, audit_logs RESTART IDENTITY CASCADE"))
         await session.execute(delete(ClubLeader))
         await session.execute(delete(User))
         await session.execute(delete(Club))
         await session.commit()
+
+
+@pytest.fixture
+async def clean_users() -> AsyncIterator[None]:
+    await _wipe_dev_data()
     yield
-    async with factory() as session:
-        await session.execute(delete(ClubLeader))
-        await session.execute(delete(User))
-        await session.execute(delete(Club))
-        await session.commit()
+    await _wipe_dev_data()
 
 
 @pytest.fixture

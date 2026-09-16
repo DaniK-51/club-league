@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.entities import User
 from src.models.enums import UserRole
+from src.services.audit_service import AuditService, user_public_snapshot
 from src.services.sso_client import SSOProfile
 
 
@@ -18,6 +19,7 @@ class EmailConflictError(Exception):
 
 async def upsert_user_from_sso(session: AsyncSession, profile: SSOProfile) -> User:
     """Upsert by sso_id. SSO owns email/name only — never role/can_sudo."""
+    audit = AuditService(session)
     existing_by_sso = await session.execute(
         select(User).where(User.sso_id == profile.sso_id)
     )
@@ -37,6 +39,8 @@ async def upsert_user_from_sso(session: AsyncSession, profile: SSOProfile) -> Us
             created_at=datetime.now(UTC),
         )
         session.add(user)
+        await session.flush()
+        await audit.log_user_created(user)
     else:
         if user.email != profile.email:
             email_owner = await session.execute(
@@ -45,8 +49,13 @@ async def upsert_user_from_sso(session: AsyncSession, profile: SSOProfile) -> Us
             other = email_owner.scalar_one_or_none()
             if other is not None and other.id != user.id:
                 raise EmailConflictError(profile.email)
+
+        old_snapshot = user_public_snapshot(user)
+        profile_changed = user.email != profile.email or user.name != profile.name
         user.email = profile.email
         user.name = profile.name
+        await session.flush()
+        if profile_changed:
+            await audit.log_user_profile_updated(user, old_snapshot=old_snapshot)
 
-    await session.flush()
     return user
