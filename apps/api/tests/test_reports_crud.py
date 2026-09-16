@@ -277,3 +277,87 @@ async def test_list_for_leader_only_own_club(
 
     mod = await client.get("/api/reports", headers=_auth(reports_env["mod_token"]))
     assert len(mod.json()["data"]) == 1
+
+
+async def test_report_not_found(client: AsyncClient, reports_env: dict[str, str]) -> None:
+    missing = "00000000-0000-0000-0000-000000000000"
+    resp = await client.get(
+        f"/api/reports/{missing}",
+        headers=_auth(reports_env["leader_token"]),
+    )
+    assert resp.status_code == 404
+    assert resp.json()["detail"]["error"]["code"] == "REPORT_NOT_FOUND"
+
+
+async def test_moderator_cannot_create_report(
+    client: AsyncClient, reports_env: dict[str, str]
+) -> None:
+    resp = await client.post(
+        "/api/reports",
+        headers=_auth(reports_env["mod_token"]),
+        json={
+            "criteriaId": reports_env["criteria_id"],
+            "activityDate": "2026-09-01T12:00:00+00:00",
+            "reportData": {"count": 1},
+            "links": ["https://t.me/club/mod"],
+        },
+    )
+    assert resp.status_code == 403
+
+
+async def test_moderator_cannot_update_or_submit(
+    client: AsyncClient, reports_env: dict[str, str]
+) -> None:
+    create = await client.post(
+        "/api/reports",
+        headers=_auth(reports_env["leader_token"]),
+        json={
+            "criteriaId": reports_env["criteria_id"],
+            "activityDate": "2026-09-01T12:00:00+00:00",
+            "reportData": {"count": 1},
+            "links": ["https://t.me/club/x"],
+        },
+    )
+    report_id = create.json()["data"]["id"]
+
+    patch = await client.patch(
+        f"/api/reports/{report_id}",
+        headers=_auth(reports_env["mod_token"]),
+        json={"reportData": {"count": 2}},
+    )
+    assert patch.status_code == 403
+
+    submit = await client.post(
+        f"/api/reports/{report_id}/submit",
+        headers=_auth(reports_env["mod_token"]),
+    )
+    assert submit.status_code == 403
+
+
+async def test_guest_has_no_club_reports_list(
+    client: AsyncClient, reports_env: dict[str, str]
+) -> None:
+    from sqlalchemy import delete as sa_delete
+
+    factory = get_session_factory()
+    async with factory() as session:
+        guest = User(
+            sso_id="sso-guest-list",
+            email="guest.list@x.test",
+            name="Guest",
+            role=UserRole.GUEST,
+            can_sudo=False,
+            created_at=datetime.now(UTC),
+        )
+        session.add(guest)
+        await session.commit()
+        guest_id = guest.id
+
+    token = create_access_token(user_id=guest_id, role=UserRole.GUEST, can_sudo=False)
+    resp = await client.get("/api/reports", headers=_auth(token))
+    assert resp.status_code == 200
+    assert resp.json()["data"] == []
+
+    async with factory() as session:
+        await session.execute(sa_delete(User).where(User.id == guest_id))
+        await session.commit()
