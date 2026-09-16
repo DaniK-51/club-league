@@ -47,6 +47,10 @@ class Settings(BaseSettings):
         default="postgresql+asyncpg://club_league:club_league@127.0.0.1:5432/club_league",
         alias="DATABASE_URL",
     )
+    db_pool_size: int = Field(default=5, alias="DB_POOL_SIZE")
+    db_max_overflow: int = Field(default=10, alias="DB_MAX_OVERFLOW")
+    db_pool_timeout: int = Field(default=30, alias="DB_POOL_TIMEOUT")
+    db_pool_recycle: int = Field(default=1800, alias="DB_POOL_RECYCLE")
 
     jwt_secret: str = Field(default="change-me-in-production", alias="JWT_SECRET")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
@@ -62,6 +66,23 @@ class Settings(BaseSettings):
         default="http://localhost:5173/auth/callback",
         alias="SSO_REDIRECT_URI",
     )
+    # Comma-separated browser origins allowed to call the API.
+    cors_origins: str = Field(
+        default="http://localhost:5173,http://127.0.0.1:5173,http://localhost:9001,http://127.0.0.1:9001",
+        alias="CORS_ORIGINS",
+    )
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        raw = self.cors_origins.strip()
+        if not raw:
+            return [
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:9001",
+                "http://127.0.0.1:9001",
+            ]
+        return [part.strip() for part in raw.split(",") if part.strip()]
 
     deadline_soft_warning_days: int = Field(default=7, alias="DEADLINE_SOFT_WARNING_DAYS")
     # Comma-separated domains; use allowed_domains property for the parsed set.

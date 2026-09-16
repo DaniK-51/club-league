@@ -32,7 +32,8 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
-ignore = ["E501", "B008"]
+# N815: API contract uses camelCase DTO fields
+ignore = ["E501", "B008", "N815"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -42,5 +43,7 @@ packages = ["src"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
+# One event loop for the whole session so SQLAlchemy async pool stays valid.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]

@@ -17,45 +17,54 @@
 ## 🚀 Local Development
 
 ### Предварительные требования
-- Node.js 20+ и Python 3.11+
-- [uv](https://docs.astral.sh/uv/)
-- Docker & Docker Compose
+- Docker & Docker Compose (основной путь)
+- Для hot-reload разработки: Python 3.11+ и [uv](https://docs.astral.sh/uv/)
 
-### 1. Поднятие базы данных
+### Быстрый старт (Docker, весь стек)
+
 ```bash
-docker compose up -d
-# PostgreSQL 16 на localhost:5432 (user/pass/db: club_league)
+docker compose up --build
 ```
 
-### 2. Backend (`/apps/api`)
-```bash
-cd apps/api
-cp .env.example .env
-
-uv sync
-uv run alembic upgrade head
-uv run uvicorn src.main:app --reload --port 8000
-```
+Поднимает:
+| Сервис | URL | Описание |
+|--------|-----|----------|
+| `db` | `localhost:5432` | PostgreSQL 16 |
+| `mock-sso` | `http://127.0.0.1:9001` | Dev OAuth2 SSO |
+| `api` | `http://127.0.0.1:8000` | FastAPI (миграции + seed при старте) |
 
 Проверка: `curl http://127.0.0.1:8000/health`
 
-Тесты и линт:
+### Тестовые пользователи mock SSO
+Роли и `can_sudo` хранятся **только в БД API**, не в SSO.
+
+| email | после seed |
+|-------|------------|
+| `moderator@innopolis.university` | MODERATOR + can_sudo |
+| `leader@innopolis.university` | CLUB_LEADER + Dev Sport Club |
+| `guest@innopolis.university` | GUEST |
+
+### Проверка SSO в браузере
+Откройте **http://127.0.0.1:9001/** → «Войти через SSO» → выберите пользователя.
+Страница `/callback` сама отправит `code` в `POST /api/auth/sso/callback` и покажет роль из нашей БД.
+
+### Hot-reload разработка (вне Docker)
+
 ```bash
-uv run pytest
-uv run ruff check src tests
+docker compose up -d db mock-sso
+
+cd apps/api
+cp .env.example .env
+uv sync
+uv run alembic upgrade head
+uv run python -m scripts.seed_dev_users
+uv run uvicorn src.main:app --reload --port 8000
 ```
 
-
-### 3. Frontend (`/apps/web`)
+Тесты и линт:
 ```bash
-cd apps/web
-npm install
-
-# Копирование env
-cp .env.example .env.local
-
-# Запуск сервера разработки
-npm run dev
+cd apps/api && uv run pytest && uv run ruff check src tests scripts
+cd apps/mock-sso && uv run pytest
 ```
 
 ## 🛡️ Безопасность и Аудит

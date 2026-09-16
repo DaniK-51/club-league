@@ -2,9 +2,12 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.endpoints import auth as auth_endpoints
+from src.api.endpoints import users as users_endpoints
 from src.core.config import get_settings
 from src.core.database import dispose_engine, get_db
 from src.schemas.common import ApiSuccess, HealthResponse
@@ -25,6 +28,14 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins_list,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     @app.get("/health", response_model=ApiSuccess[HealthResponse], tags=["system"])
     async def health(session: AsyncSession = Depends(get_db)) -> ApiSuccess[HealthResponse]:
         try:
@@ -35,6 +46,8 @@ def create_app() -> FastAPI:
         payload = HealthResponse(status="ok", env=settings.app_env, database=db_status)  # type: ignore[arg-type]
         return ApiSuccess(data=payload)
 
+    app.include_router(auth_endpoints.router, prefix=settings.api_prefix)
+    app.include_router(users_endpoints.router, prefix=settings.api_prefix)
     return app
 
 

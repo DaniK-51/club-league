@@ -8,7 +8,7 @@
 - Миграции: **Alembic** (`alembic upgrade head`). `schema.prisma` — источник истины для схемы, но runtime-миграции — Alembic.
 - Валидация: Pydantic V2 (строго для всех DTO и JSONB-конфигов правил)
 - DB: PostgreSQL 16 (Docker Compose, `localhost:5432`)
-- Auth: Интеграция с университетским SSO (OAuth2/SAML)
+- Auth: University SSO (OAuth2) in prod. **Dev:** `apps/mock-sso` (same client path). SSO returns **only** `sub`/`email`/`name` — `role` and `can_sudo` live **only in our DB**.
 
 ## Frontend
 - Framework: React 18 + Vite (SPA, без Next.js SSR)

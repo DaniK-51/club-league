@@ -1,3 +1,5 @@
+name: club-league
+
 services:
   db:
     image: postgres:16-alpine
@@ -15,6 +17,75 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - club-league
+
+  mock-sso:
+    build:
+      context: ./apps/mock-sso
+      cache_from:
+        - type=gha
+    container_name: club-league-mock-sso
+    ports:
+      - "9001:9001"
+    environment:
+      CLIENT_ID: club-league-dev
+      CLIENT_SECRET: club-league-dev-secret
+      SELF_BASE_URL: http://127.0.0.1:9001
+      API_BASE_URL: http://127.0.0.1:8000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9001/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - club-league
+
+  api:
+    build:
+      context: ./apps/api
+      cache_from:
+        - type=gha
+    container_name: club-league-api
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: development
+      DEBUG: "true"
+      DATABASE_URL: postgresql+asyncpg://club_league:club_league@db:5432/club_league
+      JWT_SECRET: dev-secret-not-for-prod
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      REFRESH_TOKEN_EXPIRE_DAYS: "14"
+      DB_POOL_SIZE: "5"
+      DB_MAX_OVERFLOW: "10"
+      # In-cluster SSO (server-to-server). Browser hits localhost:9001.
+      SSO_TOKEN_URL: http://mock-sso:9001/token
+      SSO_USERINFO_URL: http://mock-sso:9001/userinfo
+      SSO_AUTHORIZE_URL: http://127.0.0.1:9001/authorize
+      SSO_CLIENT_ID: club-league-dev
+      SSO_CLIENT_SECRET: club-league-dev-secret
+      # Must match the redirect_uri used when the code was issued.
+      SSO_REDIRECT_URI: http://127.0.0.1:9001/callback
+      CORS_ORIGINS: http://localhost:9001,http://127.0.0.1:9001
+      SEED_DEV_USERS: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+      mock-sso:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      start_period: 20s
+      retries: 5
+    networks:
+      - club-league
+
+networks:
+  club-league:
+    driver: bridge
 
 volumes:
   club_league_pgdata:

@@ -178,7 +178,6 @@ class Report(Base):
         back_populates="report",
         cascade="all, delete-orphan",
     )
-    audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="report")
 
 
 class ReportLink(Base):
@@ -219,7 +218,6 @@ class AuditLog(Base):
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     performed_by: Mapped[User] = relationship(back_populates="audit_logs")
-    report: Mapped[Report | None] = relationship(back_populates="audit_logs")
 
 
 class SudoAction(Base):
