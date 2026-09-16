@@ -32,8 +32,9 @@ docker compose up --build
 | `db` | `localhost:5432` | PostgreSQL 16 |
 | `mock-sso` | `http://127.0.0.1:9001` | Dev OAuth2 SSO |
 | `api` | `http://127.0.0.1:8000` | FastAPI (миграции + seed при старте) |
+| `swagger` | `http://127.0.0.1:8080` | OpenAPI UI (Swagger) |
 
-Проверка: `curl http://127.0.0.1:8000/health`
+Проверка: `curl http://127.0.0.1:8000/health` · Swagger: http://127.0.0.1:8080
 
 ### Тестовые пользователи mock SSO
 Роли и `can_sudo` хранятся **только в БД API**, не в SSO.

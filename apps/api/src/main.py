@@ -76,10 +76,31 @@ def _spawn(coro) -> None:  # type: ignore[no-untyped-def]
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
-        title=settings.app_name,
-        debug=settings.debug,
+        title="Club League 2026 API",
+        summary="Reports, moderation, rating and Yandex Disk sync for Innopolis clubs",
+        description=(
+            "Single source of truth for club activity reports.\n\n"
+            "- **Auth**: university SSO (dev: mock-sso). JWT access + refresh.\n"
+            "- **Errors**: `{ error: { code, message } }`\n"
+            "- **i18n**: `Accept-Language` (en default, ru supported)\n"
+            "- **Links only**: no file uploads (domain whitelist)\n"
+            "- **Audit**: append-only hash chain\n"
+        ),
         version="0.1.0",
+        debug=settings.debug,
         lifespan=lifespan,
+        openapi_tags=[
+            {"name": "system", "description": "Health and diagnostics"},
+            {"name": "auth", "description": "SSO callback, token refresh"},
+            {"name": "users", "description": "Current user profile"},
+            {"name": "reports", "description": "Report CRUD, submit, comments thread"},
+            {"name": "moderation", "description": "Approve / changes / close / dispute / complete / archive"},
+            {"name": "admin", "description": "Sudo mode and Yandex sync control"},
+            {"name": "rating", "description": "Public club rating"},
+        ],
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
     )
 
     app.add_middleware(
@@ -158,6 +179,35 @@ def create_app() -> FastAPI:
     app.include_router(moderation_endpoints.router, prefix=settings.api_prefix)
     app.include_router(admin_endpoints.router, prefix=settings.api_prefix)
     app.include_router(rating_endpoints.router, prefix=settings.api_prefix)
+
+    from fastapi.openapi.utils import get_openapi
+
+    def _custom_openapi() -> dict[str, Any]:
+        if app.openapi_schema:
+            return app.openapi_schema
+        schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            description=app.description,
+            summary=app.summary,
+            routes=app.routes,
+            tags=app.openapi_tags,
+        )
+        schema.setdefault("components", {}).setdefault("securitySchemes", {})["BearerAuth"] = {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "Access token from POST /api/auth/sso/callback",
+        }
+        schema.setdefault("security", [{"BearerAuth": []}])
+        servers = schema.setdefault("servers", [])
+        # Empty URL = same origin (swagger nginx proxies /api → api)
+        servers.insert(0, {"url": "", "description": "Same origin (Swagger proxy)"})
+        servers.append({"url": "http://127.0.0.1:8000", "description": "Direct API"})
+        app.openapi_schema = schema
+        return app.openapi_schema
+
+    app.openapi = _custom_openapi  # type: ignore[method-assign]
     return app
 
 

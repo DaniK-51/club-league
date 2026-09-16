@@ -68,7 +68,11 @@ class Settings(BaseSettings):
     )
     # Comma-separated browser origins allowed to call the API.
     cors_origins: str = Field(
-        default="http://localhost:5173,http://127.0.0.1:5173,http://localhost:9001,http://127.0.0.1:9001",
+        default=(
+            "http://localhost:5173,http://127.0.0.1:5173,"
+            "http://localhost:9001,http://127.0.0.1:9001,"
+            "http://localhost:8080,http://127.0.0.1:8080"
+        ),
         alias="CORS_ORIGINS",
     )
 
@@ -81,6 +85,8 @@ class Settings(BaseSettings):
                 "http://127.0.0.1:5173",
                 "http://localhost:9001",
                 "http://127.0.0.1:9001",
+                "http://localhost:8080",
+                "http://127.0.0.1:8080",
             ]
         return [part.strip() for part in raw.split(",") if part.strip()]
 

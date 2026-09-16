@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Club League 2026 — API</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.18.2/swagger-ui.css" />
+  <style>
+    html { box-sizing: border-box; overflow-y: scroll; }
+    *, *::before, *::after { box-sizing: inherit; }
+    body { margin: 0; background: #fafafa; font-family: system-ui, sans-serif; }
+    .topbar { display: none !important; }
+    .header {
+      background: #1a2330;
+      color: #e7ecf1;
+      padding: 1rem 1.5rem;
+    }
+    .header h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
+    .header p { margin: 0.25rem 0 0; color: #93a4b8; font-size: 0.9rem; }
+    #swagger-ui { max-width: 1460px; margin: 0 auto; padding: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Club League 2026 — API</h1>
+    <p>
+      OpenAPI from FastAPI ·
+      <a style="color:#93c5fd" href="/openapi.json" id="spec-link">openapi.json</a>
+      · Error envelope: <code>{ error: { code, message } }</code>
+    </p>
+  </div>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5.18.2/swagger-ui-bundle.js" crossorigin></script>
+  <script>
+    window.ui = SwaggerUIBundle({
+      url: "/openapi.json",
+      dom_id: "#swagger-ui",
+      deepLinking: true,
+      tryItOutEnabled: true,
+      persistAuthorization: true,
+      displayRequestDuration: true,
+      filter: true,
+      docExpansion: "list",
+      defaultModelsExpandDepth: 1,
+      tagsSorter: "alpha",
+      operationsSorter: "alpha",
+    });
+  </script>
+</body>
+</html>

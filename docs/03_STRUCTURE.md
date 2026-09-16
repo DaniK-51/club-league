@@ -41,3 +41,13 @@ src/
     useReportSubmission.ts
   store/
     auth.store.ts
+
+## /apps/swagger (OpenAPI UI)
+
+```
+index.html     # Swagger UI (CDN)
+nginx.conf     # proxy /openapi.json → api:8000
+Dockerfile
+```
+
+Open http://127.0.0.1:8080 after `docker compose up swagger`.

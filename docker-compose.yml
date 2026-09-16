@@ -67,7 +67,7 @@ services:
       SSO_CLIENT_SECRET: club-league-dev-secret
       # Must match the redirect_uri used when the code was issued.
       SSO_REDIRECT_URI: http://127.0.0.1:9001/callback
-      CORS_ORIGINS: http://localhost:9001,http://127.0.0.1:9001
+      CORS_ORIGINS: http://localhost:9001,http://127.0.0.1:9001,http://localhost:8080,http://127.0.0.1:8080
       SEED_DEV_USERS: "true"
     depends_on:
       db:
@@ -80,6 +80,18 @@ services:
       timeout: 3s
       start_period: 20s
       retries: 5
+    networks:
+      - club-league
+
+  swagger:
+    build:
+      context: ./apps/swagger
+    container_name: club-league-swagger
+    ports:
+      - "8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
     networks:
       - club-league
 
