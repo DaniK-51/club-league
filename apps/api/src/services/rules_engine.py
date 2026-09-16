@@ -112,6 +112,8 @@ def calculate_tiered_with_bonus(
     config: TieredWithBonusConfig, data: dict[str, Any]
 ) -> CalculationResult:
     count = _require_int(data, config.count_field)
+    if count < 0:
+        raise ReportDataError(f"{config.count_field} must be >= 0")
     for tier in config.tiers:
         if tier.matches(count):
             pts = tier.pts

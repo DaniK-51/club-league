@@ -2,6 +2,8 @@ from collections.abc import AsyncIterator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+
+from src.core.config import get_settings
 from src.core.database import dispose_engine
 from src.main import app
 
@@ -10,6 +12,15 @@ from src.main import app
 async def _db_engine_lifecycle() -> AsyncIterator[None]:
     yield
     await dispose_engine()
+
+
+@pytest.fixture(autouse=True)
+def _disable_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RATE_LIMIT_ENABLED", "false")
+    get_settings.cache_clear()
+    yield
+    monkeypatch.delenv("RATE_LIMIT_ENABLED", raising=False)
+    get_settings.cache_clear()
 
 
 @pytest.fixture
