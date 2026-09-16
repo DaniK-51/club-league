@@ -9,7 +9,6 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import delete, text
 from sqlalchemy.exc import DBAPIError
-
 from src.core.database import get_session_factory
 from src.models.entities import Club, ClubLeader, User
 from src.models.enums import UserRole

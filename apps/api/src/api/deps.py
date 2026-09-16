@@ -11,7 +11,13 @@ from src.core.errors import api_error
 from src.core.security import TokenError, decode_token
 from src.models.entities import ClubLeader, User
 from src.models.enums import UserRole
+from src.policies.common import ensure_moderator, ensure_sudo
 from src.schemas.common import ErrorCode
+
+
+async def get_user_by_id(session: AsyncSession, user_id: str) -> User | None:
+    result = await session.execute(select(User).where(User.id == user_id))
+    return result.scalar_one_or_none()
 
 
 async def get_current_user(
@@ -26,9 +32,7 @@ async def get_current_user(
     except TokenError:
         raise api_error(401, ErrorCode.UNAUTHORIZED, "Invalid or expired token") from None
 
-    user_id = str(payload["sub"])
-    result = await session.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    user = await get_user_by_id(session, str(payload["sub"]))
     if user is None:
         raise api_error(401, ErrorCode.UNAUTHORIZED, "User not found")
     return user
@@ -53,14 +57,12 @@ def require_role(*roles: UserRole):
 async def require_moderator(
     user: Annotated[User, Depends(get_current_user)],
 ) -> User:
-    if user.role != UserRole.MODERATOR:
-        raise api_error(403, ErrorCode.FORBIDDEN, "Moderator role required")
+    ensure_moderator(user)
     return user
 
 
 async def require_sudo(
     user: Annotated[User, Depends(get_current_user)],
 ) -> User:
-    if user.role != UserRole.MODERATOR or not user.can_sudo:
-        raise api_error(403, ErrorCode.SUDO_REQUIRED, "Sudo privileges required")
+    ensure_sudo(user)
     return user

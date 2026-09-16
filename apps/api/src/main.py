@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Literal
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,13 +39,15 @@ def create_app() -> FastAPI:
 
     @app.get("/health", response_model=ApiSuccess[HealthResponse], tags=["system"])
     async def health(session: AsyncSession = Depends(get_db)) -> ApiSuccess[HealthResponse]:
+        db_status: Literal["ok", "error"]
         try:
             await session.execute(text("SELECT 1"))
             db_status = "ok"
         except Exception:
             db_status = "error"
-        payload = HealthResponse(status="ok", env=settings.app_env, database=db_status)  # type: ignore[arg-type]
-        return ApiSuccess(data=payload)
+        return ApiSuccess(
+            data=HealthResponse(status="ok", env=settings.app_env, database=db_status)
+        )
 
     app.include_router(auth_endpoints.router, prefix=settings.api_prefix)
     app.include_router(users_endpoints.router, prefix=settings.api_prefix)
