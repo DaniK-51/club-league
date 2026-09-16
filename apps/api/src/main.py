@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.endpoints import admin as admin_endpoints
 from src.api.endpoints import auth as auth_endpoints
 from src.api.endpoints import moderation as moderation_endpoints
 from src.api.endpoints import reports as reports_endpoints
@@ -55,6 +56,7 @@ def create_app() -> FastAPI:
     app.include_router(users_endpoints.router, prefix=settings.api_prefix)
     app.include_router(reports_endpoints.router, prefix=settings.api_prefix)
     app.include_router(moderation_endpoints.router, prefix=settings.api_prefix)
+    app.include_router(admin_endpoints.router, prefix=settings.api_prefix)
     return app
 
 
