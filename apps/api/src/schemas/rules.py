@@ -131,7 +131,9 @@ class ReportDataError(Exception):
         super().__init__(message)
 
 
-def parse_rule_config(rule_type: str, config: dict[str, Any]) -> TieredConfig | ScaleConfig | BinaryConfig:
+def parse_rule_config(
+    rule_type: str, config: dict[str, Any]
+) -> TieredConfig | ScaleConfig | BinaryConfig | Any:
     """Validate JSONB config for a known rule_type."""
     if rule_type == "tiered":
         return TieredConfig.model_validate(config)
@@ -139,4 +141,8 @@ def parse_rule_config(rule_type: str, config: dict[str, Any]) -> TieredConfig | 
         return ScaleConfig.model_validate(config)
     if rule_type == "binary":
         return BinaryConfig.from_flat_dict(config)
+    if rule_type == "combined_cap":
+        from src.services.caps import CombinedCapConfig
+
+        return CombinedCapConfig.model_validate(config)
     raise UnknownRuleTypeError(rule_type)

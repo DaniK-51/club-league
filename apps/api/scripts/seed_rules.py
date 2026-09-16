@@ -56,6 +56,33 @@ CRITERIA: list[dict[str, object]] = [
             ]
         },
     },
+    {
+        "code": "C4",
+        "name_ru": "Пост в соцсетях",
+        "name_en": "Social media post",
+        "category": None,
+        "rule_type": "binary",
+        "config": {"not_informative": 10, "informative": 50},
+    },
+    {
+        "code": "C5",
+        "name_ru": "Эстетика соцсетей",
+        "name_en": "Social media aesthetics",
+        "category": None,
+        "rule_type": "binary",
+        "config": {"standard": 200, "premium": 300},
+    },
+    {
+        "code": "G1",
+        "name_ru": "Потолок соцсетей",
+        "name_en": "Social media combined cap",
+        "category": None,
+        "rule_type": "combined_cap",
+        "config": {
+            "criteria_codes": ["C4", "C5"],
+            "max_percent_of_total_monthly": 15,
+        },
+    },
 ]
 
 
