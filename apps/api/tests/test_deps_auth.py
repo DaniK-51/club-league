@@ -6,7 +6,8 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 
 import pytest
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import JSONResponse
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
 from src.api.deps import get_current_user, require_moderator, require_role, require_sudo
@@ -14,8 +15,20 @@ from src.core.database import get_session_factory
 from src.core.security import create_access_token
 from src.models.entities import User
 from src.models.enums import UserRole
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 authz_app = FastAPI()
+
+
+@authz_app.exception_handler(StarletteHTTPException)
+async def _http_err(_request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    detail = exc.detail
+    if isinstance(detail, dict) and "error" in detail:
+        return JSONResponse(status_code=exc.status_code, content=detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": {"code": "INTERNAL_SERVER_ERROR", "message": str(detail)}},
+    )
 
 
 @authz_app.get("/mod-only")
@@ -73,7 +86,7 @@ async def test_require_moderator_forbidden_for_leader(dep_client: AsyncClient) -
     token = create_access_token(user_id=uid, role=UserRole.CLUB_LEADER, can_sudo=False)
     resp = await dep_client.get("/mod-only", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 403
-    assert resp.json()["detail"]["error"]["code"] == "FORBIDDEN"
+    assert resp.json()["error"]["code"] == "FORBIDDEN"
     await _delete_user("dep.leader@x.test")
 
 
@@ -90,7 +103,7 @@ async def test_require_sudo_forbidden_without_flag(dep_client: AsyncClient) -> N
     token = create_access_token(user_id=uid, role=UserRole.MODERATOR, can_sudo=False)
     resp = await dep_client.get("/sudo-only", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 403
-    assert resp.json()["detail"]["error"]["code"] == "SUDO_REQUIRED"
+    assert resp.json()["error"]["code"] == "SUDO_REQUIRED"
     await _delete_user("dep.mod.nosudo@x.test")
 
 
@@ -123,4 +136,4 @@ async def test_get_current_user_unknown_sub(dep_client: AsyncClient) -> None:
     )
     resp = await dep_client.get("/guest-ok", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 401
-    assert resp.json()["detail"]["error"]["code"] == "UNAUTHORIZED"
+    assert resp.json()["error"]["code"] == "UNAUTHORIZED"

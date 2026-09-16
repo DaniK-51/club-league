@@ -27,7 +27,7 @@ from src.services.moderation_service import requires_comment, resolve_final_poin
 async def _wipe() -> None:
     factory = get_session_factory()
     async with factory() as session:
-        await session.execute(text("TRUNCATE sudo_actions, audit_logs RESTART IDENTITY CASCADE"))
+        await session.execute(text("TRUNCATE sudo_actions, audit_logs, archive_batches RESTART IDENTITY CASCADE"))
         await session.execute(delete(ReportLink))
         await session.execute(delete(Report))
         await session.execute(delete(CriteriaRule))
@@ -139,7 +139,7 @@ async def test_approve_override_points_requires_comment(
         json={"status": "APPROVED", "finalPoints": 100},
     )
     assert missing.status_code == 400
-    assert missing.json()["detail"]["error"]["code"] == "COMMENT_REQUIRED"
+    assert missing.json()["error"]["code"] == "COMMENT_REQUIRED"
 
     ok = await client.patch(
         f"/api/reports/{report_id}/moderate",
@@ -160,7 +160,7 @@ async def test_changes_required_requires_comment(
         json={"status": "CHANGES_REQUIRED"},
     )
     assert resp.status_code == 400
-    assert resp.json()["detail"]["error"]["code"] == "COMMENT_REQUIRED"
+    assert resp.json()["error"]["code"] == "COMMENT_REQUIRED"
 
 
 async def test_close_sets_zero_points(client: AsyncClient, mod_env: dict[str, str]) -> None:
@@ -203,7 +203,7 @@ async def test_approve_from_draft_invalid(client: AsyncClient, mod_env: dict[str
         json={"status": "APPROVED"},
     )
     assert mod.status_code == 400
-    assert mod.json()["detail"]["error"]["code"] == "INVALID_STATUS_TRANSITION"
+    assert mod.json()["error"]["code"] == "INVALID_STATUS_TRANSITION"
 
 
 async def test_dispute_and_moderator_review(client: AsyncClient, mod_env: dict[str, str]) -> None:

@@ -11,6 +11,7 @@ from src.core.errors import api_error
 from src.models.entities import User
 from src.schemas.common import ApiSuccess, ErrorCode
 from src.schemas.report import CreateReportDTO, ReportResponse, UpdateReportDTO
+from src.services.comments_service import CommentEntry, list_report_comments
 from src.services.report_service import (
     ReportNotFoundError,
     create_report,
@@ -28,7 +29,9 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 
 def _map_report_errors(exc: Exception) -> None:
     if isinstance(exc, ReportNotFoundError):
-        raise api_error(404, ErrorCode.REPORT_NOT_FOUND, "Report not found") from None
+        raise api_error(
+            404, ErrorCode.REPORT_NOT_FOUND, "Report not found", message_key="report.not_found"
+        ) from None
     if isinstance(exc, InvalidTransitionError):
         raise api_error(400, exc.code, str(exc)) from None
 
@@ -112,3 +115,20 @@ async def delete_draft(
         _map_report_errors(exc)
         raise
     return ApiSuccess(data={"deleted": True})
+
+
+@router.get("/{report_id}/comments", response_model=ApiSuccess[list[CommentEntry]])
+async def report_comments(
+    report_id: str,
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiSuccess[list[CommentEntry]]:
+    """GitHub-issues-style thread from audit_logs (docs: no separate chat table)."""
+    try:
+        report = await get_report(session, user=user, report_id=report_id)
+    except (ReportNotFoundError, InvalidTransitionError) as exc:
+        _map_report_errors(exc)
+        raise
+    del report
+    entries = await list_report_comments(session, report_id=report_id)
+    return ApiSuccess(data=entries)

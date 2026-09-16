@@ -34,7 +34,8 @@ src = ["src", "tests"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
 # N815: API contract uses camelCase DTO fields
-ignore = ["E501", "B008", "N815"]
+# RUF001-003: intentional Cyrillic UI strings in i18n
+ignore = ["E501", "B008", "N815", "RUF001", "RUF002", "RUF003"]
 
 [tool.mypy]
 python_version = "3.11"

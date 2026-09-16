@@ -48,7 +48,9 @@ async def sso_callback(
         try:
             profile = await sso.exchange_code(payload.code)
         except SSOError:
-            raise api_error(401, ErrorCode.UNAUTHORIZED, "SSO authentication failed") from None
+            raise api_error(
+                401, ErrorCode.UNAUTHORIZED, "SSO failed", message_key="unauthorized.sso_failed"
+            ) from None
 
     try:
         user = await upsert_user_from_sso(session, profile)
@@ -56,7 +58,8 @@ async def sso_callback(
         raise api_error(
             401,
             ErrorCode.UNAUTHORIZED,
-            "Email already linked to another SSO account",
+            "Email conflict",
+            message_key="unauthorized.email_conflict",
         ) from None
     await session.commit()
     return await _login_response(session, user)
@@ -70,9 +73,13 @@ async def refresh_tokens(
     try:
         token_payload = decode_token(payload.refreshToken, expected_type="refresh")
     except TokenError:
-        raise api_error(401, ErrorCode.UNAUTHORIZED, "Invalid refresh token") from None
+        raise api_error(
+            401, ErrorCode.UNAUTHORIZED, "Invalid refresh", message_key="unauthorized.refresh_invalid"
+        ) from None
 
     user = await get_user_by_id(session, str(token_payload["sub"]))
     if user is None:
-        raise api_error(401, ErrorCode.UNAUTHORIZED, "User not found")
+        raise api_error(
+            401, ErrorCode.UNAUTHORIZED, "User not found", message_key="unauthorized.user_not_found"
+        )
     return await _login_response(session, user)

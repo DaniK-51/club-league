@@ -33,7 +33,7 @@ sequenceDiagram
     participant BE as Backend (FastAPI)
     participant DB as PostgreSQL
     participant Q as Sync Queue (Debouncer 1h)
-    participant Y as Yandex Sheets API
+    participant Y as Yandex Disk (WebDAV)
 
     L->>BE: POST /api/reports (activityDate, links)
     BE->>BE: Валидация: формат URL + Whitelist доменов
@@ -50,8 +50,8 @@ sequenceDiagram
     
     Q->>BE: Trigger Sync Worker
     BE->>DB: SELECT SUM(finalPoints) GROUP BY club (текущий семестр)
-    BE->>Y: batchUpdate (Только итоговые баллы клуба)
-    Y-->>BE: 200 OK
+    BE->>Y: MKCOL + PUT CSV (overwrite) — только итоговые баллы клуба
+    Y-->>BE: 201 OK
     BE->>DB: Log sync success
 ```
 

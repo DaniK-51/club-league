@@ -85,7 +85,9 @@ async def run_sudo_action(
 
     reason = payload.reason.strip()
     if not reason:
-        raise api_error(400, ErrorCode.SUDO_REQUIRED, "reason is required")
+        raise api_error(
+            400, ErrorCode.SUDO_REQUIRED, "reason is required", message_key="sudo.reason_required"
+        )
 
     audit = AuditService(session)
 

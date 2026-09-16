@@ -107,6 +107,12 @@ class Settings(BaseSettings):
     sync_max_retries: int = Field(default=3, alias="SYNC_MAX_RETRIES")
     sync_retry_base_seconds: float = Field(default=0.5, alias="SYNC_RETRY_BASE_SECONDS")
     current_semester: str = Field(default="2026-fall", alias="CURRENT_SEMESTER")
+    # APPROVED → COMPLETED auto-timer (docs/04_ARCHITECTURE.md)
+    approved_auto_complete_days: int = Field(default=7, alias="APPROVED_AUTO_COMPLETE_DAYS")
+    # Rate limiting (AGENTS: configurable, not hardcoded)
+    rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
+    rate_limit_max_requests: int = Field(default=120, alias="RATE_LIMIT_MAX_REQUESTS")
+    rate_limit_window_seconds: int = Field(default=60, alias="RATE_LIMIT_WINDOW_SECONDS")
 
     @property
     def allowed_domains(self) -> frozenset[str]:

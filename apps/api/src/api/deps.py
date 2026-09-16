@@ -25,16 +25,22 @@ async def get_current_user(
     authorization: Annotated[str | None, Header()] = None,
 ) -> User:
     if not authorization or not authorization.lower().startswith("bearer "):
-        raise api_error(401, ErrorCode.UNAUTHORIZED, "Missing bearer token")
+        raise api_error(
+            401, ErrorCode.UNAUTHORIZED, "Missing bearer token", message_key="unauthorized.missing_token"
+        )
     token = authorization[7:].strip()
     try:
         payload = decode_token(token, expected_type="access")
     except TokenError:
-        raise api_error(401, ErrorCode.UNAUTHORIZED, "Invalid or expired token") from None
+        raise api_error(
+            401, ErrorCode.UNAUTHORIZED, "Invalid token", message_key="unauthorized.invalid_token"
+        ) from None
 
     user = await get_user_by_id(session, str(payload["sub"]))
     if user is None:
-        raise api_error(401, ErrorCode.UNAUTHORIZED, "User not found")
+        raise api_error(
+            401, ErrorCode.UNAUTHORIZED, "User not found", message_key="unauthorized.user_not_found"
+        )
     return user
 
 
@@ -48,7 +54,9 @@ def require_role(*roles: UserRole):
         user: Annotated[User, Depends(get_current_user)],
     ) -> User:
         if user.role not in roles:
-            raise api_error(403, ErrorCode.FORBIDDEN, "Insufficient role")
+            raise api_error(
+                403, ErrorCode.FORBIDDEN, "Insufficient role", message_key="forbidden.insufficient_role"
+            )
         return user
 
     return dependency

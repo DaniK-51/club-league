@@ -26,7 +26,7 @@ from src.models.enums import ClubCategory, ReportStatus, UserRole
 async def _wipe() -> None:
     factory = get_session_factory()
     async with factory() as session:
-        await session.execute(text("TRUNCATE sudo_actions, audit_logs RESTART IDENTITY CASCADE"))
+        await session.execute(text("TRUNCATE sudo_actions, audit_logs, archive_batches RESTART IDENTITY CASCADE"))
         await session.execute(delete(ReportLink))
         await session.execute(delete(Report))
         await session.execute(delete(CriteriaRule))
@@ -116,7 +116,7 @@ async def test_public_rating_applies_combined_cap(
     resp = await client.get("/api/rating")
     assert resp.status_code == 200
     data = resp.json()["data"]
-    assert data["semester"] == "2026-fall"
+    assert "semester" not in data
     assert len(data["clubs"]) == 1
     club = data["clubs"][0]
     assert club["name"] == "Rating Club"
@@ -138,7 +138,7 @@ async def test_sync_force_requires_moderator(
         headers={"Authorization": f"Bearer {rating_env['mod']}"},
     )
     assert ok.status_code == 200
-    assert ok.json()["data"]["runCount"] >= 1
+    assert ok.json()["data"]["status"] == "queued"
 
 
 async def test_sync_status(client: AsyncClient, rating_env: dict[str, str]) -> None:

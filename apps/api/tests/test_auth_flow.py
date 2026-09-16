@@ -13,7 +13,7 @@ from src.services.sso_client import SSOProfile
 async def _wipe_dev_data() -> None:
     factory = get_session_factory()
     async with factory() as session:
-        await session.execute(text("TRUNCATE sudo_actions, audit_logs RESTART IDENTITY CASCADE"))
+        await session.execute(text("TRUNCATE sudo_actions, audit_logs, archive_batches RESTART IDENTITY CASCADE"))
         await session.execute(delete(ClubLeader))
         await session.execute(delete(User))
         await session.execute(delete(Club))
@@ -61,7 +61,7 @@ async def test_callback_creates_guest(client: AsyncClient, fake_sso, clean_users
 async def test_callback_bad_code(client: AsyncClient, fake_sso, clean_users) -> None:
     resp = await client.post("/api/auth/sso/callback", json={"code": "bad"})
     assert resp.status_code == 401
-    assert resp.json()["detail"]["error"]["code"] == "UNAUTHORIZED"
+    assert resp.json()["error"]["code"] == "UNAUTHORIZED"
 
 
 async def test_callback_keeps_role_on_relogin(client: AsyncClient, fake_sso, clean_users) -> None:
@@ -86,7 +86,7 @@ async def test_callback_keeps_role_on_relogin(client: AsyncClient, fake_sso, cle
 async def test_me_requires_token(client: AsyncClient) -> None:
     resp = await client.get("/api/users/me")
     assert resp.status_code == 401
-    assert resp.json()["detail"]["error"]["code"] == "UNAUTHORIZED"
+    assert resp.json()["error"]["code"] == "UNAUTHORIZED"
 
 
 async def test_me_with_token(client: AsyncClient, fake_sso, clean_users) -> None:

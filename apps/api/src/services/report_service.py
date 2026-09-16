@@ -52,7 +52,12 @@ async def _load_rules_for_criteria(
         select(RulesVersion).order_by(RulesVersion.valid_from.desc()).limit(1)
     )
     if version is None:
-        raise api_error(404, ErrorCode.RULES_VERSION_NOT_FOUND, "No rules version configured")
+        raise api_error(
+            404,
+            ErrorCode.RULES_VERSION_NOT_FOUND,
+            "No rules version",
+            message_key="rules.version_not_found",
+        )
     rule = await session.scalar(
         select(CriteriaRule).where(
             CriteriaRule.criteria_id == criteria_id,
@@ -81,7 +86,6 @@ def _calculate_points(rule: CriteriaRule | None, report_data: dict[str, Any]) ->
 def report_to_response(report: Report) -> ReportResponse:
     return ReportResponse(
         id=report.id,
-        clubId=report.club_id,
         clubName=report.club.name if report.club else "",
         criteriaCode=report.criteria.code if report.criteria else "",
         activityDate=report.activity_date.isoformat(),
@@ -90,7 +94,6 @@ def report_to_response(report: Report) -> ReportResponse:
         calculatedPoints=report.calculated_points,
         finalPoints=report.final_points,
         links=[{"url": link.url, "domain": link.domain} for link in report.links],
-        reportData=dict(report.report_data or {}),
     )
 
 
@@ -110,7 +113,12 @@ async def _resolve_club_id(session: AsyncSession, user: User, club_id: str | Non
     result = await session.execute(select(ClubLeader).where(ClubLeader.user_id == user.id))
     leaderships = list(result.scalars().all())
     if not leaderships:
-        raise api_error(403, ErrorCode.NOT_CLUB_LEADER, "User is not a club leader")
+        raise api_error(
+            403,
+            ErrorCode.NOT_CLUB_LEADER,
+            "Club leader role required",
+            message_key="forbidden.club_leader_required",
+        )
     if club_id is not None:
         ensure_club_leader(user, frozenset(link.club_id for link in leaderships), club_id)
         return club_id
@@ -127,12 +135,22 @@ async def create_report(
     payload: CreateReportDTO,
 ) -> Report:
     if user.role == UserRole.MODERATOR:
-        raise api_error(403, ErrorCode.FORBIDDEN, "Moderators cannot create club reports")
+        raise api_error(
+            403,
+            ErrorCode.FORBIDDEN,
+            "Moderators cannot create club reports",
+            message_key="forbidden.cannot_create_report",
+        )
 
-    club_id = await _resolve_club_id(session, user, payload.clubId)
+    club_id = await _resolve_club_id(session, user, None)
     criteria = await session.scalar(select(Criteria).where(Criteria.id == payload.criteriaId))
     if criteria is None:
-        raise api_error(404, ErrorCode.RULES_VERSION_NOT_FOUND, "Criteria not found")
+        raise api_error(
+            404,
+            ErrorCode.RULES_VERSION_NOT_FOUND,
+            "Criteria not found",
+            message_key="report.criteria_not_found",
+        )
 
     try:
         validated_links = validate_links(payload.links)
@@ -200,7 +218,12 @@ async def update_report(
         raise ReportNotFoundError(report_id)
 
     if user.role == UserRole.MODERATOR:
-        raise api_error(403, ErrorCode.FORBIDDEN, "Use moderation endpoints")
+        raise api_error(
+            403,
+            ErrorCode.FORBIDDEN,
+            "Use moderation endpoints",
+            message_key="forbidden.use_moderation_endpoints",
+        )
 
     ensure_club_leader(user, await _user_club_ids(session, user.id), report.club_id)
     ensure_editable(report.status)
@@ -260,7 +283,12 @@ async def submit_report(session: AsyncSession, *, user: User, report_id: str) ->
         raise ReportNotFoundError(report_id)
 
     if user.role == UserRole.MODERATOR:
-        raise api_error(403, ErrorCode.FORBIDDEN, "Moderators cannot submit reports")
+        raise api_error(
+            403,
+            ErrorCode.FORBIDDEN,
+            "Moderators cannot submit reports",
+            message_key="forbidden.cannot_submit",
+        )
 
     ensure_club_leader(user, await _user_club_ids(session, user.id), report.club_id)
     old_status = report.status
@@ -286,18 +314,20 @@ async def submit_report(session: AsyncSession, *, user: User, report_id: str) ->
 
 
 async def soft_delete_report(session: AsyncSession, *, user: User, report_id: str) -> None:
+    """Soft-delete: only DRAFT for everyone (AGENTS: leaders see hard delete)."""
     report = await _get_report(session, report_id)
     if report is None:
         raise ReportNotFoundError(report_id)
 
     if user.role != UserRole.MODERATOR:
         ensure_club_leader(user, await _user_club_ids(session, user.id), report.club_id)
-        if report.status != ReportStatus.DRAFT:
-            raise api_error(
-                400,
-                ErrorCode.INVALID_STATUS_TRANSITION,
-                "Only DRAFT reports can be deleted by a leader",
-            )
+    if report.status != ReportStatus.DRAFT:
+        raise api_error(
+            400,
+            ErrorCode.INVALID_STATUS_TRANSITION,
+            "Only DRAFT can be deleted",
+            message_key="report.delete_only_draft",
+        )
 
     old_status = report.status
     report.is_deleted = True

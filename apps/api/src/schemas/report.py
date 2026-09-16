@@ -16,11 +16,12 @@ class LinkOut(BaseModel):
 
 
 class CreateReportDTO(BaseModel):
+    """Matches docs/shared/api-contract.ts CreateReportDTO."""
+
     criteriaId: str = Field(min_length=1)
     activityDate: str = Field(min_length=1)  # ISO 8601
     reportData: dict[str, Any] = Field(default_factory=dict)
     links: list[str] = Field(min_length=1)
-    clubId: str | None = None  # optional if leader has exactly one club
 
     @field_validator("activityDate")
     @classmethod
@@ -54,8 +55,9 @@ class UpdateReportDTO(BaseModel):
 
 
 class ReportResponse(BaseModel):
+    """Strict contract — no extra fields (api-contract.ts)."""
+
     id: str
-    clubId: str
     clubName: str
     criteriaCode: str
     activityDate: str
@@ -64,7 +66,6 @@ class ReportResponse(BaseModel):
     calculatedPoints: int | None
     finalPoints: int | None
     links: list[LinkOut]
-    reportData: dict[str, Any]
 
 
 def parse_activity_date(value: str) -> datetime:

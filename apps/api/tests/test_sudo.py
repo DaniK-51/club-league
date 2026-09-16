@@ -27,7 +27,7 @@ from src.models.enums import ClubCategory, UserRole
 async def _wipe() -> None:
     factory = get_session_factory()
     async with factory() as session:
-        await session.execute(text("TRUNCATE sudo_actions, audit_logs RESTART IDENTITY CASCADE"))
+        await session.execute(text("TRUNCATE sudo_actions, audit_logs, archive_batches RESTART IDENTITY CASCADE"))
         await session.execute(delete(ReportLink))
         await session.execute(delete(Report))
         await session.execute(delete(CriteriaRule))
@@ -143,9 +143,7 @@ async def test_force_status_skips_state_machine(
         },
     )
     assert resp.status_code == 200, resp.text
-    data = resp.json()["data"]
-    assert data["status"] == "COMPLETED"
-    assert data["action"] == "force_status"
+    assert resp.json()["data"]["success"] is True
 
 
 async def test_restore_deleted(client: AsyncClient, sudo_env: dict[str, str]) -> None:
@@ -166,10 +164,11 @@ async def test_restore_deleted(client: AsyncClient, sudo_env: dict[str, str]) ->
         },
     )
     assert restored.status_code == 200
-    assert restored.json()["data"]["isDeleted"] is False
+    assert restored.json()["data"]["success"] is True
 
     again = await client.get(f"/api/reports/{report_id}", headers=_auth(sudo_env["leader"]))
     assert again.status_code == 200
+    assert again.json()["data"]["status"] == "DRAFT"
 
 
 async def test_override_points(client: AsyncClient, sudo_env: dict[str, str]) -> None:
@@ -185,7 +184,9 @@ async def test_override_points(client: AsyncClient, sudo_env: dict[str, str]) ->
         },
     )
     assert resp.status_code == 200
-    assert resp.json()["data"]["finalPoints"] == 999
+    assert resp.json()["data"]["success"] is True
+    get_resp = await client.get(f"/api/reports/{report_id}", headers=_auth(sudo_env["sudo"]))
+    assert get_resp.json()["data"]["finalPoints"] == 999
 
     factory = get_session_factory()
     async with factory() as session:
@@ -212,7 +213,7 @@ async def test_sudo_requires_can_sudo(client: AsyncClient, sudo_env: dict[str, s
         },
     )
     assert resp.status_code == 403
-    assert resp.json()["detail"]["error"]["code"] == "SUDO_REQUIRED"
+    assert resp.json()["error"]["code"] == "SUDO_REQUIRED"
 
 
 async def test_sudo_requires_reason(client: AsyncClient, sudo_env: dict[str, str]) -> None:

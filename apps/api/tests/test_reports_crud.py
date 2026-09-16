@@ -24,7 +24,7 @@ from src.models.enums import ClubCategory, UserRole
 async def _wipe() -> None:
     factory = get_session_factory()
     async with factory() as session:
-        await session.execute(text("TRUNCATE sudo_actions, audit_logs RESTART IDENTITY CASCADE"))
+        await session.execute(text("TRUNCATE sudo_actions, audit_logs, archive_batches RESTART IDENTITY CASCADE"))
         await session.execute(delete(ReportLink))
         await session.execute(delete(Report))
         await session.execute(delete(CriteriaRule))
@@ -164,7 +164,7 @@ async def test_create_rejects_bad_domain(
         },
     )
     assert resp.status_code == 400
-    assert resp.json()["detail"]["error"]["code"] == "DOMAIN_NOT_ALLOWED"
+    assert resp.json()["error"]["code"] == "DOMAIN_NOT_ALLOWED"
 
 
 async def test_update_draft_and_submit(
@@ -286,7 +286,7 @@ async def test_report_not_found(client: AsyncClient, reports_env: dict[str, str]
         headers=_auth(reports_env["leader_token"]),
     )
     assert resp.status_code == 404
-    assert resp.json()["detail"]["error"]["code"] == "REPORT_NOT_FOUND"
+    assert resp.json()["error"]["code"] == "REPORT_NOT_FOUND"
 
 
 async def test_moderator_cannot_create_report(

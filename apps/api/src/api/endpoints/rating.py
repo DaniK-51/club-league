@@ -19,13 +19,10 @@ async def get_rating(
     session: Annotated[AsyncSession, Depends(get_db)],
     semester: Annotated[str | None, Query()] = None,
 ) -> ApiSuccess[RatingResponse]:
-    """Public club rating (source for Yandex Sheets mirror)."""
+    """Public club rating (api-contract: { clubs: [...] })."""
     settings = get_settings()
     sem = semester or settings.current_semester
     totals = await compute_rating(session, semester=sem)
     return ApiSuccess(
-        data=RatingResponse(
-            semester=sem,
-            clubs=[club_total_to_rating(t) for t in totals],
-        )
+        data=RatingResponse(clubs=[club_total_to_rating(t) for t in totals])
     )

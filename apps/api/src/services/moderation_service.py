@@ -82,7 +82,8 @@ async def moderate_report(
         raise api_error(
             400,
             ErrorCode.COMMENT_REQUIRED,
-            "Comment is required for CHANGES_REQUIRED or custom finalPoints",
+            "Comment required",
+            message_key="moderation.comment_required",
         )
 
     old_snapshot = {

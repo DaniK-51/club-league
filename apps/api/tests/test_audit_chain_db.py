@@ -23,7 +23,7 @@ from src.services.audit_service import (
 async def _reset() -> None:
     factory = get_session_factory()
     async with factory() as session:
-        await session.execute(text("TRUNCATE sudo_actions, audit_logs RESTART IDENTITY CASCADE"))
+        await session.execute(text("TRUNCATE sudo_actions, audit_logs, archive_batches RESTART IDENTITY CASCADE"))
         await session.execute(delete(ClubLeader))
         await session.execute(delete(User))
         await session.execute(delete(Club))

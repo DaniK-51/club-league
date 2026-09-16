@@ -2,26 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, field_validator
+from src.schemas.rules import CombinedCapConfig
 
-
-class CombinedCapConfig(BaseModel):
-    """G1: C4 + C5 ≤ max_percent_of_total_monthly % of club monthly total."""
-
-    model_config = {"extra": "forbid"}
-
-    criteria_codes: list[str] = Field(min_length=1)
-    max_percent_of_total_monthly: float = Field(gt=0, le=100)
-
-    @field_validator("criteria_codes")
-    @classmethod
-    def _unique_codes(cls, value: list[str]) -> list[str]:
-        cleaned = [code.strip() for code in value if code.strip()]
-        if len(cleaned) != len(set(cleaned)):
-            raise ValueError("criteria_codes must be unique")
-        if not cleaned:
-            raise ValueError("criteria_codes must not be empty")
-        return cleaned
+__all__ = ["CombinedCapConfig", "apply_combined_cap"]
 
 
 def apply_combined_cap(
@@ -47,7 +30,6 @@ def apply_combined_cap(
     if capped_sum == 0:
         return result
 
-    # Scale each capped criterion so the group sum equals budget.
     scale = budget / capped_sum
     assigned = 0
     codes = [c for c in config.criteria_codes if points_by_criteria.get(c, 0) > 0]

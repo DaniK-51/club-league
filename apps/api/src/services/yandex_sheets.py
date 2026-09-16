@@ -234,9 +234,3 @@ def build_client() -> SheetsWriter:
         )
         return NullYandexClient()
     return YandexWebDavClient()
-
-
-# Aliases for existing imports
-YandexSheetsError = YandexDiskError
-YandexSheetsClient = YandexWebDavClient
-YandexDiskClient = YandexWebDavClient
