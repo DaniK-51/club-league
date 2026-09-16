@@ -18,7 +18,7 @@
 - i18n: i18next (полная поддержка RU/EN)
 
 ## Инфраструктура и интеграции
-- Yandex Sheets API: для синхронизации рейтинга (debounce 1 час, retry с exponential backoff).
+- Yandex Disk **WebDAV** (`https://webdav.yandex.ru`): PUT rating CSV (overwrite). Basic auth: login + application password. Debounce 1 час, retry exponential backoff.
 - Часовой пояс: Все дедлайны и сравнения дат строго в `Europe/Moscow` (UTC+3).
 
 ## Архитектурные правила

@@ -125,6 +125,12 @@ async def moderate_report(
         )
 
     await session.commit()
+
+    if report.status == ReportStatus.COMPLETED:
+        from src.services.sync_service import debouncer
+
+        debouncer.notify()
+
     loaded = await _get_report(session, report.id)
     assert loaded is not None
     return loaded
@@ -200,6 +206,11 @@ async def complete_report(
         new_value={"status": report.status.value},
     )
     await session.commit()
+
+    from src.services.sync_service import debouncer
+
+    debouncer.notify()
+
     loaded = await _get_report(session, report.id)
     assert loaded is not None
     return loaded

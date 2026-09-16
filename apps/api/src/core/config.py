@@ -88,6 +88,26 @@ class Settings(BaseSettings):
     # Comma-separated domains; use allowed_domains property for the parsed set.
     allowed_link_domains: str = Field(default="", alias="ALLOWED_LINK_DOMAINS")
 
+    # Yandex Disk WebDAV (rating CSV mirror)
+    # Password is the 16-char **application password** from Yandex (not account password).
+    yandex_sheets_enabled: bool = Field(default=False, alias="YANDEX_SHEETS_ENABLED")
+    yandex_webdav_username: str = Field(default="", alias="YANDEX_WEBDAV_USERNAME")
+    yandex_webdav_password: str = Field(default="", alias="YANDEX_WEBDAV_PASSWORD")
+    # Legacy alias — used as WebDAV password if YANDEX_WEBDAV_PASSWORD is empty.
+    yandex_oauth_token: str = Field(default="", alias="YANDEX_OAUTH_TOKEN")
+    yandex_webdav_base: str = Field(
+        default="https://webdav.yandex.ru",
+        alias="YANDEX_WEBDAV_BASE",
+    )
+    yandex_disk_path: str = Field(
+        default="club-league/rating.csv",
+        alias="YANDEX_DISK_PATH",
+    )
+    sync_debounce_seconds: int = Field(default=3600, alias="SYNC_DEBOUNCE_SECONDS")
+    sync_max_retries: int = Field(default=3, alias="SYNC_MAX_RETRIES")
+    sync_retry_base_seconds: float = Field(default=0.5, alias="SYNC_RETRY_BASE_SECONDS")
+    current_semester: str = Field(default="2026-fall", alias="CURRENT_SEMESTER")
+
     @property
     def allowed_domains(self) -> frozenset[str]:
         raw = self.allowed_link_domains.strip()

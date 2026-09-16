@@ -8,7 +8,7 @@
 - [x] **Шаг 5:** Полный CRUD отчётов (`reports.py`) с валидацией whitelist ссылок и soft warning дедлайна (7 дней).
 - [x] **Шаг 6:** Логика модерации: переходы статусов, расчёт `finalPoints`, применение капов (включая combined cap C4+C5).
 - [x] **Шаг 7:** Sudo mode: форсированные переходы и восстановление удалённых отчётов с обязательным `reason`.
-- [ ] **Шаг 8:** Sync Service: Debouncer (1 час) + клиент Yandex Sheets API с retry логикой.
+- [x] **Шаг 8:** Sync Service: Debouncer (1 час) + клиент Yandex Sheets API с retry логикой.
 
 ## Frontend (/apps/web)
 - [ ] **Шаг 1:** Инициализация Vite + React + Tailwind + shadcn/ui. Настройка i18next (RU/EN).

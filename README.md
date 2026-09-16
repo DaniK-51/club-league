@@ -72,5 +72,29 @@ cd apps/mock-sso && uv run pytest
 - Прямые `UPDATE`/`DELETE` к таблице аудита запрещены на уровне БД (`REVOKE`).
 - Sudo-действия требуют обязательного поля `reason` и отдельного логирования.
 
+## 📊 Yandex Disk WebDAV (rating file mirror)
+
+Система — source of truth. На Диск выгружается **CSV-файл** рейтинга (overwrite).
+
+```
+Base: https://webdav.yandex.ru/
+Auth: Basic (Yandex login + application password, 16 символов)
+PUT   club-league/rating.csv
+MKCOL club-league/   (если папки нет)
+```
+
+```bash
+# apps/api/.env
+YANDEX_SHEETS_ENABLED=true
+YANDEX_WEBDAV_USERNAME=<логин Яндекса>
+YANDEX_WEBDAV_PASSWORD=<application password, 16 символов>
+YANDEX_DISK_PATH=club-league/rating.csv
+```
+
+- Debounce **1 час** после COMPLETED; force: `POST /api/admin/sync/force`
+- Статус: `GET /api/admin/sync/status`
+- Публичный источник: `GET /api/rating`
+- Dev: `YANDEX_SHEETS_ENABLED=false` → NullYandexClient
+
 ## 📞 Контакты
 - Ментор: Тимофей Коновалов (@T_Konovalov)
