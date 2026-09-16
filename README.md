@@ -23,18 +23,41 @@
 ### Быстрый старт (Docker, весь стек)
 
 ```bash
+cp .env.example .env   # при необходимости поправь порты/секреты
 docker compose up --build
 ```
 
 Поднимает:
-| Сервис | URL | Описание |
+| Сервис | URL (по умолчанию) | Описание |
 |--------|-----|----------|
-| `db` | `localhost:5432` | PostgreSQL 16 |
-| `mock-sso` | `http://127.0.0.1:9001` | Dev OAuth2 SSO |
-| `api` | `http://127.0.0.1:8000` | FastAPI (миграции + seed при старте) |
-| `swagger` | `http://127.0.0.1:8080` | OpenAPI UI (Swagger) |
+| `db` | `localhost:${DB_PORT:-5432}` | PostgreSQL 16 |
+| `mock-sso` | `http://127.0.0.1:${MOCK_SSO_PORT:-9001}` | Dev OAuth2 SSO |
+| `api` | `http://127.0.0.1:${API_PORT:-8000}` | FastAPI (миграции + seed при старте) |
+| `swagger` | `http://127.0.0.1:${SWAGGER_PORT:-8080}` | OpenAPI UI (Swagger) |
 
-Проверка: `curl http://127.0.0.1:8000/health` · Swagger: http://127.0.0.1:8080
+### Конфигурация через `.env`
+
+Два уровня — без дублирования:
+
+| Файл | Что в нём |
+|------|-----------|
+| **`.env`** (корень) | Только compose: порты, Postgres, shared SSO-creds |
+| **`apps/api/.env`** | Все настройки приложения (JWT, SSO URLs, Yandex, rate-limit…) |
+
+В Docker compose загружает `apps/api/.env` через `env_file` и **переопределяет** только хосты для in-cluster сети:
+- `DATABASE_URL` → `@db:5432`
+- `SSO_TOKEN_URL` / `SSO_USERINFO_URL` → `http://mock-sso:9001/...`
+
+| Переменная (корневой `.env`) | По умолчанию | Назначение |
+|------------|-------------|------------|
+| `API_PORT` | `8000` | Порт FastAPI |
+| `DB_PORT` | `5432` | Порт PostgreSQL |
+| `MOCK_SSO_PORT` | `9001` | Порт mock SSO |
+| `SWAGGER_PORT` | `8080` | Порт Swagger UI |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `club_league` | Учётка БД |
+| `SSO_CLIENT_ID` / `SSO_CLIENT_SECRET` | `club-league-dev` | OAuth2 client (shared) |
+
+См. `apps/api/.env.example` — полный список настроек приложения.
 
 ### Тестовые пользователи mock SSO
 Роли и `can_sudo` хранятся **только в БД API**, не в SSO.
@@ -46,7 +69,7 @@ docker compose up --build
 | `guest@innopolis.university` | GUEST |
 
 ### Проверка SSO в браузере
-Откройте **http://127.0.0.1:9001/** → «Войти через SSO» → выберите пользователя.
+Откройте **http://127.0.0.1:${MOCK_SSO_PORT:-9001}/** → «Войти через SSO» → выберите пользователя.
 Страница `/callback` сама отправит `code` в `POST /api/auth/sso/callback` и покажет роль из нашей БД.
 
 ### Hot-reload разработка (вне Docker)
@@ -59,7 +82,7 @@ cp .env.example .env
 uv sync
 uv run alembic upgrade head
 uv run python -m scripts.seed_dev_users
-uv run uvicorn src.main:app --reload --port 8000
+uv run uvicorn src.main:app --reload --port ${API_PORT:-8000}
 ```
 
 Тесты и линт:

@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     app_env: str = Field(default="development", alias="APP_ENV")
     debug: bool = Field(default=True, alias="DEBUG")
     api_prefix: str = Field(default="/api", alias="API_PREFIX")
+    api_port: int = Field(default=8000, alias="API_PORT")
 
     database_url: str = Field(
         default="postgresql+asyncpg://club_league:club_league@127.0.0.1:5432/club_league",

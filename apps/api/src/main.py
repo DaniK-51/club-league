@@ -205,7 +205,12 @@ def create_app() -> FastAPI:
         servers = schema.setdefault("servers", [])
         # Empty URL = same origin (swagger nginx proxies /api → api)
         servers.insert(0, {"url": "", "description": "Same origin (Swagger proxy)"})
-        servers.append({"url": "http://127.0.0.1:8000", "description": "Direct API"})
+        servers.append(
+            {
+                "url": f"http://127.0.0.1:{settings.api_port}",
+                "description": "Direct API",
+            }
+        )
         app.openapi_schema = schema
         return app.openapi_schema
 
