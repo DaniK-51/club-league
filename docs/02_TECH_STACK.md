@@ -2,10 +2,12 @@
 
 ## Backend
 - Runtime: Python 3.11+
+- Package manager: **[uv](https://docs.astral.sh/uv/)** — единственный способ управления зависимостями (`uv sync`, `uv run …`). Не использовать `pip`/`venv`/`requirements.txt` вручную.
 - Framework: FastAPI
-- ORM: SQLAlchemy 2.0 (или Prisma Python)
+- ORM: SQLAlchemy 2.0 (async)
+- Миграции: **Alembic** (`alembic upgrade head`). `schema.prisma` — источник истины для схемы, но runtime-миграции — Alembic.
 - Валидация: Pydantic V2 (строго для всех DTO и JSONB-конфигов правил)
-- DB: PostgreSQL 15+
+- DB: PostgreSQL 16 (Docker Compose, `localhost:5432`)
 - Auth: Интеграция с университетским SSO (OAuth2/SAML)
 
 ## Frontend

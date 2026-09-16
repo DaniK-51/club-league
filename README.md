@@ -18,32 +18,33 @@
 
 ### Предварительные требования
 - Node.js 20+ и Python 3.11+
-- PostgreSQL 15+ (локально или через Docker)
-- Docker & Docker Compose (опционально, для БД)
+- [uv](https://docs.astral.sh/uv/)
+- Docker & Docker Compose
 
 ### 1. Поднятие базы данных
 ```bash
-# Запуск PostgreSQL через Docker
-docker run --name club-league-db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=club_league -p 5432:5432 -d postgres:15
+docker compose up -d
+# PostgreSQL 16 на localhost:5432 (user/pass/db: club_league)
 ```
 
 ### 2. Backend (`/apps/api`)
 ```bash
 cd apps/api
-python -m venv venv
-source venv/bin/activate  # или venv\Scripts\activate на Windows
-pip install -r requirements.txt
-
-# Копирование env
 cp .env.example .env
-# (Отредактируйте .env, указав DATABASE_URL="postgresql://postgres:postgres@localhost:5432/club_league")
 
-# Применение миграций (Alembic или Prisma)
-prisma db push # или alembic upgrade head
-
-# Запуск сервера разработки
-uvicorn src.main:app --reload --port 8000
+uv sync
+uv run alembic upgrade head
+uv run uvicorn src.main:app --reload --port 8000
 ```
+
+Проверка: `curl http://127.0.0.1:8000/health`
+
+Тесты и линт:
+```bash
+uv run pytest
+uv run ruff check src tests
+```
+
 
 ### 3. Frontend (`/apps/web`)
 ```bash

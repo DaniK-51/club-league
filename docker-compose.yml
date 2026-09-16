@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: club-league-db
+    environment:
+      POSTGRES_USER: club_league
+      POSTGRES_PASSWORD: club_league
+      POSTGRES_DB: club_league
+    ports:
+      - "5432:5432"
+    volumes:
+      - club_league_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U club_league -d club_league"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  club_league_pgdata:

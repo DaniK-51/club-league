@@ -1,7 +1,7 @@
 # План имплементации MVP
 
 ## Backend (/apps/api)
-- [ ] **Шаг 1:** Инициализация FastAPI, SQLAlchemy, подключение к PostgreSQL. Настройка миграций (Alembic) по `schema.prisma`.
+- [x] **Шаг 1:** Инициализация FastAPI, SQLAlchemy, подключение к PostgreSQL. Настройка миграций (Alembic) по `schema.prisma`.
 - [ ] **Шаг 2:** Интеграция SSO (OAuth2/SAML) + Policy-based авторизация (модуль `policies/`).
 - [ ] **Шаг 3:** Реализация `AuditService` с криптографической цепочкой (hash chain) и триггерами БД (REVOKE).
 - [ ] **Шаг 4:** Ядро `RulesEngine`: реализация 3 базовых типов правил (tiered, scale, binary) + валидация JSONB через Pydantic.
