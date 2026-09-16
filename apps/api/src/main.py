@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.endpoints import auth as auth_endpoints
+from src.api.endpoints import reports as reports_endpoints
 from src.api.endpoints import users as users_endpoints
 from src.core.config import get_settings
 from src.core.database import dispose_engine, get_db
@@ -51,6 +52,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_endpoints.router, prefix=settings.api_prefix)
     app.include_router(users_endpoints.router, prefix=settings.api_prefix)
+    app.include_router(reports_endpoints.router, prefix=settings.api_prefix)
     return app
 
 
