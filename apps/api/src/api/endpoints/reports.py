@@ -10,7 +10,7 @@ from src.core.database import get_db
 from src.core.errors import api_error
 from src.models.entities import User
 from src.schemas.common import ApiSuccess, ErrorCode
-from src.schemas.report import CreateReportDTO, ReportResponse, UpdateReportDTO
+from src.schemas.report import CreateReportDTO, ReportResponse, SetCalculationDTO, UpdateReportDTO
 from src.services.comments_service import (
     CommentEntry,
     CreateCommentDTO,
@@ -23,6 +23,7 @@ from src.services.report_service import (
     get_report,
     list_reports,
     report_to_response,
+    set_calculation,
     soft_delete_report,
     submit_report,
     update_report,
@@ -88,6 +89,22 @@ async def update(
 ) -> ApiSuccess[ReportResponse]:
     try:
         report = await update_report(session, user=user, report_id=report_id, payload=payload)
+    except (ReportNotFoundError, InvalidTransitionError) as exc:
+        _map_report_errors(exc)
+        raise
+    return ApiSuccess(data=report_to_response(report))
+
+
+@router.patch("/{report_id}/calculation", response_model=ApiSuccess[ReportResponse])
+async def set_calculation_method(
+    report_id: str,
+    payload: SetCalculationDTO,
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiSuccess[ReportResponse]:
+    """Set calculation method + manual points (no status change). Moderator only."""
+    try:
+        report = await set_calculation(session, user=user, report_id=report_id, payload=payload)
     except (ReportNotFoundError, InvalidTransitionError) as exc:
         _map_report_errors(exc)
         raise

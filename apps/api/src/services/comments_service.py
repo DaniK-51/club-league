@@ -39,6 +39,7 @@ _COMMENT_ACTIONS = [
     "deleted",
     "sudo_action",
     "comment",
+    "calculation_updated",
 ]
 
 
@@ -55,7 +56,11 @@ def _build_body(row: AuditLog) -> str:
         mod_comment = row.new_value.get("moderation_comment")
         if mod_comment and (not body_parts or mod_comment not in body_parts):
             body_parts.append(str(mod_comment))
-        if not body_parts:
+        if row.action == "calculation_updated":
+            method = row.new_value.get("calculation_method", "auto")
+            pts = row.new_value.get("manual_points")
+            body_parts.append(f"calculation → {method}" + (f" ({pts} pts)" if pts is not None else ""))
+        elif not body_parts:
             status = row.new_value.get("status")
             if status:
                 body_parts.append(f"status → {status}")

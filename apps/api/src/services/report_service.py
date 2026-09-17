@@ -23,6 +23,7 @@ from src.schemas.common import ErrorCode
 from src.schemas.report import (
     CreateReportDTO,
     ReportResponse,
+    SetCalculationDTO,
     UpdateReportDTO,
     is_overdue,
     parse_activity_date,
@@ -92,6 +93,8 @@ def report_to_response(report: Report) -> ReportResponse:
         status=report.status,
         calculatedPoints=report.calculated_points,
         finalPoints=report.final_points,
+        calculationMethod=report.calculation_method or "auto",
+        manualPoints=report.manual_points,
         links=[{"url": link.url, "domain": link.domain} for link in report.links],
         reportData=dict(report.report_data or {}),
     )
@@ -214,6 +217,14 @@ _MODERATOR_EDIT_STATUSES = frozenset({
     ReportStatus.APPROVED,
 })
 
+# Statuses where moderator may set calculation method
+_MODERATOR_CALC_STATUSES = frozenset({
+    ReportStatus.ON_MODERATION,
+    ReportStatus.DISPUTED,
+    ReportStatus.CHANGES_REQUIRED,
+    ReportStatus.APPROVED,
+})
+
 # Statuses where leader may edit (via ensure_editable)
 _LEADER_EDIT_STATUSES = frozenset({ReportStatus.DRAFT, ReportStatus.CHANGES_REQUIRED})
 
@@ -293,6 +304,56 @@ async def update_report(
             "activity_date": report.activity_date.isoformat(),
             "report_data": dict(report.report_data or {}),
             "calculated_points": report.calculated_points,
+        },
+    )
+    await session.commit()
+    loaded = await _get_report(session, report.id)
+    assert loaded is not None
+    return loaded
+
+
+async def set_calculation(
+    session: AsyncSession,
+    *,
+    user: User,
+    report_id: str,
+    payload: SetCalculationDTO,
+) -> Report:
+    """Set calculation method + manual points WITHOUT changing status."""
+    if user.role != UserRole.MODERATOR:
+        raise api_error(403, ErrorCode.FORBIDDEN, "Moderator only")
+
+    report = await _get_report(session, report_id)
+    if report is None:
+        raise ReportNotFoundError(report_id)
+
+    if report.status not in _MODERATOR_CALC_STATUSES:
+        raise api_error(
+            400,
+            ErrorCode.INVALID_STATUS_TRANSITION,
+            f"Cannot set calculation in status {report.status.value}",
+        )
+
+    old_snapshot = {
+        "calculation_method": report.calculation_method,
+        "manual_points": report.manual_points,
+    }
+
+    report.calculation_method = payload.method
+    report.manual_points = payload.manualPoints if payload.method == "manual" else None
+    report.updated_at = _now()
+    await session.flush()
+
+    await AuditService(session).log(
+        entity_type="report",
+        entity_id=report.id,
+        action="calculation_updated",
+        performed_by_id=user.id,
+        performed_by_role=user.role.value,
+        old_value=old_snapshot,
+        new_value={
+            "calculation_method": report.calculation_method,
+            "manual_points": report.manual_points,
         },
     )
     await session.commit()

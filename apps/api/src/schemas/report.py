@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from src.core.config import BUSINESS_TZ, get_settings
 from src.models.enums import ReportStatus
@@ -55,7 +55,7 @@ class UpdateReportDTO(BaseModel):
 
 
 class ReportResponse(BaseModel):
-    """Strict contract — no extra fields (api-contract.ts)."""
+    """Contract — api-contract.ts + frontend report-detail additions."""
 
     id: str
     clubName: str
@@ -65,8 +65,23 @@ class ReportResponse(BaseModel):
     status: ReportStatus
     calculatedPoints: int | None
     finalPoints: int | None
+    calculationMethod: str = "auto"
+    manualPoints: int | None = None
     links: list[LinkOut]
     reportData: dict[str, Any] = Field(default_factory=dict)
+
+
+class SetCalculationDTO(BaseModel):
+    """PATCH /api/reports/:id/calculation — no status change."""
+
+    method: Literal["auto", "manual"]
+    manualPoints: int | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def _validate_manual(self) -> SetCalculationDTO:
+        if self.method == "manual" and self.manualPoints is None:
+            raise ValueError("manualPoints required when method=manual")
+        return self
 
 
 def parse_activity_date(value: str) -> datetime:

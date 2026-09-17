@@ -161,6 +161,10 @@ class Report(Base):
     )
     calculated_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
     final_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    calculation_method: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="auto", server_default="auto"
+    )
+    manual_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

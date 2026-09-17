@@ -31,12 +31,16 @@ def resolve_final_points(
     calculated: int | None,
     override: int | None,
     target_status: ReportStatus,
+    calculation_method: str = "auto",
+    manual_points: int | None = None,
 ) -> int | None:
-    """finalPoints = moderator override or calculated. CLOSED → 0."""
+    """finalPoints based on calculation method. CLOSED → 0."""
     if target_status == ReportStatus.CLOSED:
         return 0
     if override is not None:
         return override
+    if calculation_method == "manual" and manual_points is not None:
+        return manual_points
     return calculated
 
 
@@ -71,6 +75,8 @@ async def moderate_report(
         calculated=report.calculated_points,
         override=payload.finalPoints,
         target_status=payload.status,
+        calculation_method=report.calculation_method or "auto",
+        manual_points=report.manual_points,
     )
     comment = payload.comment.strip()
     if requires_comment(

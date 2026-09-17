@@ -72,6 +72,8 @@ model Report {
   status           ReportStatus   @default(DRAFT)
   calculatedPoints Int?
   finalPoints      Int?
+  calculationMethod String        @default("auto")
+  manualPoints      Int?
   
   isDeleted        Boolean        @default(false)
   deletedAt        DateTime?
