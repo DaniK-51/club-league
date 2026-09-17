@@ -149,5 +149,48 @@
       "sudo_action": "sudo-действие"
     },
     "comingSoon": "Очередь модерации появится здесь."
+  },
+  "admin": {
+    "tabs": {
+      "sync": "Синхронизация",
+      "audit": "Аудит",
+      "rules": "Правила"
+    },
+    "sync": {
+      "title": "Синхронизация с Яндекс.Диск",
+      "force": "Запустить сейчас",
+      "status": "Статус",
+      "pending": "В очереди",
+      "idle": "Ожидание",
+      "lastRun": "Последний запуск",
+      "runCount": "Запусков",
+      "debounce": "Дебаунс",
+      "lastError": "Ошибка"
+    },
+    "audit": {
+      "title": "Журнал аудита",
+      "entityType": "Тип",
+      "entityId": "ID сущности",
+      "allTypes": "Все типы",
+      "entity": "Сущность",
+      "action": "Действие",
+      "performedBy": "Кто",
+      "date": "Дата",
+      "reason": "Причина",
+      "empty": "Нет записей",
+      "page": "Стр. {{page}} из {{totalPages}} (всего {{total}})"
+    },
+    "rules": {
+      "title": "Управление правилами",
+      "selectRule": "Выберите правило",
+      "ruleType": "Тип",
+      "semester": "Семестр",
+      "priority": "Приоритет",
+      "config": "Конфигурация (JSON)",
+      "save": "Сохранить",
+      "saved": "Сохранено",
+      "invalidJson": "Некорректный JSON",
+      "saveError": "Ошибка при сохранении"
+    }
   }
 }

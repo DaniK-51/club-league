@@ -208,10 +208,79 @@ class ApiClient {
   }
 
   async getSyncStatus(): Promise<{
-    lastSyncAt: string | null
-    status: string
+    pending: boolean
+    lastRunAt: string | null
+    lastError: string | null
+    runCount: number
+    debounceSeconds: number
   }> {
     return this.request('/api/admin/sync/status')
+  }
+
+  async getAuditLog(
+    entityType?: string,
+    entityId?: string,
+    limit = 50,
+    offset = 0
+  ): Promise<{
+    items: Array<{
+      id: string
+      seq: number
+      entityType: string
+      entityId: string
+      action: string
+      oldValue: Record<string, unknown> | null
+      newValue: Record<string, unknown> | null
+      performedByName: string
+      performedByRole: string
+      performedAt: string
+      reason: string | null
+      hash: string
+    }>
+    total: number
+    limit: number
+    offset: number
+  }> {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
+    if (entityType) params.set('entityType', entityType)
+    if (entityId) params.set('entityId', entityId)
+    return this.request(`/api/admin/audit?${params.toString()}`)
+  }
+
+  async getRule(ruleId: string): Promise<{
+    id: string
+    criteriaId: string
+    criteriaCode: string
+    ruleType: string
+    config: Record<string, unknown>
+    priority: number
+    versionId: string
+    semester: string
+  }> {
+    return this.request(`/api/admin/rules/${ruleId}`)
+  }
+
+  async updateRule(
+    ruleId: string,
+    dto: {
+      config?: Record<string, unknown>
+      priority?: number
+      ruleType?: string
+    }
+  ): Promise<{
+    id: string
+    criteriaId: string
+    criteriaCode: string
+    ruleType: string
+    config: Record<string, unknown>
+    priority: number
+    versionId: string
+    semester: string
+  }> {
+    return this.request(`/api/admin/rules/${ruleId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(dto),
+    })
   }
 
   async sudo(dto: SudoActionDTO): Promise<{ success: boolean }> {

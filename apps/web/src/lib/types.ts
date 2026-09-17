@@ -88,6 +88,17 @@ export interface CriteriaOut {
   rules: CriteriaRuleOut[]
 }
 
+export interface RuleOut {
+  id: string
+  criteriaId: string
+  criteriaCode: string
+  ruleType: string
+  config: Record<string, unknown>
+  priority: number
+  versionId: string
+  semester: string
+}
+
 export interface RatingClub {
   id: string
   name: string

@@ -149,5 +149,48 @@
       "sudo_action": "sudo action"
     },
     "comingSoon": "Moderation queue will appear here."
+  },
+  "admin": {
+    "tabs": {
+      "sync": "Sync",
+      "audit": "Audit",
+      "rules": "Rules"
+    },
+    "sync": {
+      "title": "Yandex Disk Sync",
+      "force": "Run Now",
+      "status": "Status",
+      "pending": "Queued",
+      "idle": "Idle",
+      "lastRun": "Last Run",
+      "runCount": "Runs",
+      "debounce": "Debounce",
+      "lastError": "Error"
+    },
+    "audit": {
+      "title": "Audit Log",
+      "entityType": "Type",
+      "entityId": "Entity ID",
+      "allTypes": "All Types",
+      "entity": "Entity",
+      "action": "Action",
+      "performedBy": "By",
+      "date": "Date",
+      "reason": "Reason",
+      "empty": "No entries",
+      "page": "Page {{page}} of {{totalPages}} ({{total}} total)"
+    },
+    "rules": {
+      "title": "Rules Management",
+      "selectRule": "Select a rule",
+      "ruleType": "Type",
+      "semester": "Semester",
+      "priority": "Priority",
+      "config": "Configuration (JSON)",
+      "save": "Save",
+      "saved": "Saved",
+      "invalidJson": "Invalid JSON",
+      "saveError": "Failed to save"
+    }
   }
 }

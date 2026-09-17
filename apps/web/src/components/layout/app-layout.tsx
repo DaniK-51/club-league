@@ -27,9 +27,14 @@ export function AppLayout() {
               </Link>
             )}
             {isAuthenticated && user?.role === 'MODERATOR' && (
-              <Link to="/moderation" className="text-sm hover:underline">
-                {t('nav.moderation')}
-              </Link>
+              <>
+                <Link to="/moderation" className="text-sm hover:underline">
+                  {t('nav.moderation')}
+                </Link>
+                <Link to="/admin" className="text-sm hover:underline">
+                  {t('nav.admin')}
+                </Link>
+              </>
             )}
             <button
               onClick={() =>

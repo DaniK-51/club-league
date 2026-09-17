@@ -7,6 +7,7 @@ import AuthCallbackPage from '@/app/auth/callback'
 import RatingPage from '@/app/public/rating'
 import ReportsPage from '@/app/leader/reports'
 import ModerationPage from '@/app/moderator/moderation'
+import AdminPage from '@/app/admin/admin'
 
 function RequireAuth({
   children,
@@ -57,6 +58,15 @@ export default function App() {
           element={
             <RequireAuth roles={['MODERATOR']}>
               <ModerationPage />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/admin"
+          element={
+            <RequireAuth roles={['MODERATOR']}>
+              <AdminPage />
             </RequireAuth>
           }
         />
