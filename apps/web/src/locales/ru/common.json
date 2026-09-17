@@ -123,9 +123,28 @@
     "approve": "Одобрить",
     "reject": "Отклонить",
     "requestChanges": "Требуются правки",
+    "review": "Модерировать",
     "comment": "Комментарий",
-    "commentRequired": "Комментарий обязателен",
+    "commentRequired": "Комментарий обязателен для этого действия",
+    "commentPlaceholder": "Причина решения…",
     "finalPoints": "Итоговые баллы",
+    "calculated": "Расчёт",
+    "final": "Итог",
+    "overridePoints": "Скорректировать баллы",
+    "overrideHint": "Оставьте пустым чтобы использовать расчётные баллы",
+    "pointsPlaceholder": "Авто",
+    "actionError": "Ошибка при модерации",
+    "filterAll": "Все",
+    "queueEmpty": "Нет отчётов с этим статусом",
+    "archivePeriod": "Архивировать период",
+    "history": "История",
+    "actions": {
+      "created": "создан",
+      "status_changed": "статус изменён",
+      "points_updated": "баллы обновлены",
+      "submitted": "отправлен на модерацию",
+      "sudo_action": "sudo-действие"
+    },
     "comingSoon": "Очередь модерации появится здесь."
   }
 }

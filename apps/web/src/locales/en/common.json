@@ -123,9 +123,28 @@
     "approve": "Approve",
     "reject": "Reject",
     "requestChanges": "Request Changes",
+    "review": "Review",
     "comment": "Comment",
-    "commentRequired": "Comment is required",
+    "commentRequired": "Comment is required for this action",
+    "commentPlaceholder": "Reason for decision…",
     "finalPoints": "Final Points",
+    "calculated": "Calculated",
+    "final": "Final",
+    "overridePoints": "Override Points",
+    "overrideHint": "Leave empty to use calculated points",
+    "pointsPlaceholder": "Auto",
+    "actionError": "Moderation action failed",
+    "filterAll": "All",
+    "queueEmpty": "No reports with this status",
+    "archivePeriod": "Archive Period",
+    "history": "History",
+    "actions": {
+      "created": "created",
+      "status_changed": "status changed",
+      "points_updated": "points updated",
+      "submitted": "submitted for moderation",
+      "sudo_action": "sudo action"
+    },
     "comingSoon": "Moderation queue will appear here."
   }
 }
