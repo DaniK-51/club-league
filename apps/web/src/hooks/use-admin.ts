@@ -1,54 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
-
-// === Types for admin ===
-
-export interface AuditLogOut {
-  id: string
-  seq: number
-  entityType: string
-  entityId: string
-  action: string
-  oldValue: Record<string, unknown> | null
-  newValue: Record<string, unknown> | null
-  performedByName: string
-  performedByRole: string
-  performedAt: string
-  reason: string | null
-  hash: string
-}
-
-export interface AuditListResponse {
-  items: AuditLogOut[]
-  total: number
-  limit: number
-  offset: number
-}
-
-export interface SyncStatus {
-  pending: boolean
-  lastRunAt: string | null
-  lastError: string | null
-  runCount: number
-  debounceSeconds: number
-}
-
-export interface RuleOut {
-  id: string
-  criteriaId: string
-  criteriaCode: string
-  ruleType: string
-  config: Record<string, unknown>
-  priority: number
-  versionId: string
-  semester: string
-}
-
-export interface UpdateRuleDTO {
-  config?: Record<string, unknown>
-  priority?: number
-  ruleType?: string
-}
+import type { UpdateRuleDTO } from '@/lib/types'
 
 // === Hooks ===
 

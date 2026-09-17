@@ -1,5 +1,6 @@
 import type {
   ApiSuccess,
+  AuditListResponse,
   CommentEntry,
   CreateReportDTO,
   CriteriaOut,
@@ -8,7 +9,10 @@ import type {
   ModerateReportDTO,
   RatingResponse,
   ReportResponse,
+  RuleOut,
   SudoActionDTO,
+  SyncStatus,
+  UpdateRuleDTO,
 } from './types'
 import { ApiError } from './types'
 
@@ -184,8 +188,13 @@ class ApiClient {
     })
   }
 
-  async archiveReports(period: string): Promise<{ archived: number }> {
-    return this.request<{ archived: number }>(
+  async archiveReports(period: string): Promise<{
+    id: string
+    period: string
+    reportCount: number
+    archivedAt: string
+  }> {
+    return this.request(
       `/api/reports/archive?period=${encodeURIComponent(period)}`,
       { method: 'POST' }
     )
@@ -207,14 +216,8 @@ class ApiClient {
     })
   }
 
-  async getSyncStatus(): Promise<{
-    pending: boolean
-    lastRunAt: string | null
-    lastError: string | null
-    runCount: number
-    debounceSeconds: number
-  }> {
-    return this.request('/api/admin/sync/status')
+  async getSyncStatus(): Promise<SyncStatus> {
+    return this.request<SyncStatus>('/api/admin/sync/status')
   }
 
   async getAuditLog(
@@ -222,62 +225,19 @@ class ApiClient {
     entityId?: string,
     limit = 50,
     offset = 0
-  ): Promise<{
-    items: Array<{
-      id: string
-      seq: number
-      entityType: string
-      entityId: string
-      action: string
-      oldValue: Record<string, unknown> | null
-      newValue: Record<string, unknown> | null
-      performedByName: string
-      performedByRole: string
-      performedAt: string
-      reason: string | null
-      hash: string
-    }>
-    total: number
-    limit: number
-    offset: number
-  }> {
+  ): Promise<AuditListResponse> {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
     if (entityType) params.set('entityType', entityType)
     if (entityId) params.set('entityId', entityId)
-    return this.request(`/api/admin/audit?${params.toString()}`)
+    return this.request<AuditListResponse>(`/api/admin/audit?${params.toString()}`)
   }
 
-  async getRule(ruleId: string): Promise<{
-    id: string
-    criteriaId: string
-    criteriaCode: string
-    ruleType: string
-    config: Record<string, unknown>
-    priority: number
-    versionId: string
-    semester: string
-  }> {
-    return this.request(`/api/admin/rules/${ruleId}`)
+  async getRule(ruleId: string): Promise<RuleOut> {
+    return this.request<RuleOut>(`/api/admin/rules/${ruleId}`)
   }
 
-  async updateRule(
-    ruleId: string,
-    dto: {
-      config?: Record<string, unknown>
-      priority?: number
-      ruleType?: string
-    }
-  ): Promise<{
-    id: string
-    criteriaId: string
-    criteriaCode: string
-    ruleType: string
-    config: Record<string, unknown>
-    priority: number
-    versionId: string
-    semester: string
-  }> {
-    return this.request(`/api/admin/rules/${ruleId}`, {
+  async updateRule(ruleId: string, dto: UpdateRuleDTO): Promise<RuleOut> {
+    return this.request<RuleOut>(`/api/admin/rules/${ruleId}`, {
       method: 'PATCH',
       body: JSON.stringify(dto),
     })

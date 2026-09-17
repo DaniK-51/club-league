@@ -36,8 +36,8 @@ export function CommentThread({ reportId }: CommentThreadProps) {
             <span>·</span>
             <span>{t(`moderation.actions.${entry.action}`, entry.action)}</span>
           </div>
-          {entry.comment && (
-            <p className="mt-1">{entry.comment}</p>
+          {entry.body && (
+            <p className="mt-1">{entry.body}</p>
           )}
         </div>
       ))}

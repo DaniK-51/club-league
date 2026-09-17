@@ -112,11 +112,51 @@ export interface RatingResponse {
 
 export interface CommentEntry {
   id: string
+  action: string
   authorName: string
   authorRole: string
-  action: string
-  comment: string | null
+  body: string
+  oldValue: Record<string, unknown> | null
+  newValue: Record<string, unknown> | null
   createdAt: string
+}
+
+// === Admin ===
+
+export interface AuditLogOut {
+  id: string
+  seq: number
+  entityType: string
+  entityId: string
+  action: string
+  oldValue: Record<string, unknown> | null
+  newValue: Record<string, unknown> | null
+  performedByName: string
+  performedByRole: string
+  performedAt: string
+  reason: string | null
+  hash: string
+}
+
+export interface AuditListResponse {
+  items: AuditLogOut[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface SyncStatus {
+  pending: boolean
+  lastRunAt: string | null
+  lastError: string | null
+  runCount: number
+  debounceSeconds: number
+}
+
+export interface UpdateRuleDTO {
+  config?: Record<string, unknown>
+  priority?: number
+  ruleType?: string
 }
 
 // === API envelope ===
