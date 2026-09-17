@@ -31,7 +31,6 @@ from src.schemas.rules import ReportDataError, RuleValidationError, UnknownRuleT
 from src.services.audit_service import AuditService
 from src.services.link_validation import LinkValidationError, validate_links
 from src.services.report_state import (
-    ensure_editable,
     ensure_leader_transition,
 )
 from src.services.rules_engine import RulesEngine
@@ -94,6 +93,7 @@ def report_to_response(report: Report) -> ReportResponse:
         calculatedPoints=report.calculated_points,
         finalPoints=report.final_points,
         links=[{"url": link.url, "domain": link.domain} for link in report.links],
+        reportData=dict(report.report_data or {}),
     )
 
 
@@ -206,6 +206,18 @@ async def _user_club_ids(session: AsyncSession, user_id: str) -> frozenset[str]:
     return frozenset(row[0] for row in result.all())
 
 
+# Statuses where moderator may edit reportData via PATCH /reports/:id
+_MODERATOR_EDIT_STATUSES = frozenset({
+    ReportStatus.ON_MODERATION,
+    ReportStatus.DISPUTED,
+    ReportStatus.CHANGES_REQUIRED,
+    ReportStatus.APPROVED,
+})
+
+# Statuses where leader may edit (via ensure_editable)
+_LEADER_EDIT_STATUSES = frozenset({ReportStatus.DRAFT, ReportStatus.CHANGES_REQUIRED})
+
+
 async def update_report(
     session: AsyncSession,
     *,
@@ -218,15 +230,27 @@ async def update_report(
         raise ReportNotFoundError(report_id)
 
     if user.role == UserRole.MODERATOR:
-        raise api_error(
-            403,
-            ErrorCode.FORBIDDEN,
-            "Use moderation endpoints",
-            message_key="forbidden.use_moderation_endpoints",
-        )
-
-    ensure_club_leader(user, await _user_club_ids(session, user.id), report.club_id)
-    ensure_editable(report.status)
+        # Moderator may only edit reportData, and only in specific statuses
+        if payload.activityDate is not None or payload.links is not None:
+            raise api_error(
+                403,
+                ErrorCode.FORBIDDEN,
+                "Moderator can only edit reportData",
+            )
+        if report.status not in _MODERATOR_EDIT_STATUSES:
+            raise api_error(
+                400,
+                ErrorCode.INVALID_STATUS_TRANSITION,
+                f"Moderator cannot edit reportData in status {report.status.value}",
+            )
+    else:
+        ensure_club_leader(user, await _user_club_ids(session, user.id), report.club_id)
+        if report.status not in _LEADER_EDIT_STATUSES:
+            raise api_error(
+                400,
+                ErrorCode.INVALID_STATUS_TRANSITION,
+                f"Report not editable in status {report.status.value}",
+            )
 
     old_snapshot = {
         "activity_date": report.activity_date.isoformat(),

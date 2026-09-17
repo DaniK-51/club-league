@@ -11,7 +11,12 @@ from src.core.errors import api_error
 from src.models.entities import User
 from src.schemas.common import ApiSuccess, ErrorCode
 from src.schemas.report import CreateReportDTO, ReportResponse, UpdateReportDTO
-from src.services.comments_service import CommentEntry, list_report_comments
+from src.services.comments_service import (
+    CommentEntry,
+    CreateCommentDTO,
+    add_report_comment,
+    list_report_comments,
+)
 from src.services.report_service import (
     ReportNotFoundError,
     create_report,
@@ -132,3 +137,31 @@ async def report_comments(
     del report
     entries = await list_report_comments(session, report_id=report_id)
     return ApiSuccess(data=entries)
+
+
+@router.post("/{report_id}/comments", response_model=ApiSuccess[CommentEntry], status_code=201)
+async def create_comment(
+    report_id: str,
+    payload: CreateCommentDTO,
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiSuccess[CommentEntry]:
+    """Add a regular comment (leader or moderator, any status except ARCHIVED)."""
+    from src.models.enums import ReportStatus, UserRole
+
+    report = await get_report(session, user=user, report_id=report_id)
+    if report.status == ReportStatus.ARCHIVED:
+        raise api_error(
+            400,
+            ErrorCode.INVALID_STATUS_TRANSITION,
+            "Cannot comment on archived report",
+        )
+    if user.role == UserRole.GUEST:
+        raise api_error(
+            403,
+            ErrorCode.FORBIDDEN,
+            "Guests cannot comment",
+            message_key="forbidden.insufficient_role",
+        )
+    entry = await add_report_comment(session, user=user, report_id=report_id, body=payload.body)
+    return ApiSuccess(data=entry)

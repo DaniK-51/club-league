@@ -305,7 +305,7 @@ async def test_moderator_cannot_create_report(
     assert resp.status_code == 403
 
 
-async def test_moderator_cannot_update_or_submit(
+async def test_moderator_cannot_submit_report(
     client: AsyncClient, reports_env: dict[str, str]
 ) -> None:
     create = await client.post(
@@ -320,13 +320,16 @@ async def test_moderator_cannot_update_or_submit(
     )
     report_id = create.json()["data"]["id"]
 
+    # Moderator cannot edit reportData in DRAFT status
     patch = await client.patch(
         f"/api/reports/{report_id}",
         headers=_auth(reports_env["mod_token"]),
         json={"reportData": {"count": 2}},
     )
-    assert patch.status_code == 403
+    assert patch.status_code == 400
+    assert patch.json()["error"]["code"] == "INVALID_STATUS_TRANSITION"
 
+    # Moderator cannot submit
     submit = await client.post(
         f"/api/reports/{report_id}/submit",
         headers=_auth(reports_env["mod_token"]),

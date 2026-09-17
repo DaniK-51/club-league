@@ -66,6 +66,7 @@ class ReportResponse(BaseModel):
     calculatedPoints: int | None
     finalPoints: int | None
     links: list[LinkOut]
+    reportData: dict[str, Any] = Field(default_factory=dict)
 
 
 def parse_activity_date(value: str) -> datetime:

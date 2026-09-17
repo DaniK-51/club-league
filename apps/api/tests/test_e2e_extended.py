@@ -12,7 +12,6 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import delete, text
-
 from src.core.database import get_session_factory
 from src.core.security import create_access_token
 from src.models.entities import (
@@ -523,8 +522,8 @@ async def test_admin_audit_list(client: AsyncClient, env: dict[str, str]) -> Non
 async def test_refresh_token_flow(client: AsyncClient, env: dict[str, str]) -> None:
     # Use SSO callback to get tokens — monkeypatch not needed if we craft refresh
     # directly via security helpers
-    from src.core.security import create_refresh_token
     from sqlalchemy import select
+    from src.core.security import create_refresh_token
 
     factory = get_session_factory()
     async with factory() as session:

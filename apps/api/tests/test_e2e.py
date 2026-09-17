@@ -11,8 +11,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete, select, text
-
+from sqlalchemy import delete, text
 from src.core.database import get_session_factory
 from src.core.security import create_access_token
 from src.models.entities import (
@@ -25,8 +24,7 @@ from src.models.entities import (
     RulesVersion,
     User,
 )
-from src.models.enums import ClubCategory, ReportStatus, UserRole
-from src.services.sso_client import SSOProfile
+from src.models.enums import ClubCategory, UserRole
 
 
 async def _wipe() -> None:
