@@ -59,9 +59,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-club_league}:${POSTGRES_PASSWORD:-club_league}@db:5432/${POSTGRES_DB:-club_league}
       SSO_TOKEN_URL: http://mock-sso:9001/token
       SSO_USERINFO_URL: http://mock-sso:9001/userinfo
-      # Browser-facing URLs keep localhost (user's browser, not container).
-      SSO_AUTHORIZE_URL: http://127.0.0.1:${MOCK_SSO_PORT:-9001}/authorize
-      SSO_REDIRECT_URI: http://127.0.0.1:${MOCK_SSO_PORT:-9001}/callback
+      # Browser-facing URLs use localhost (user's browser, not container).
+      SSO_AUTHORIZE_URL: http://localhost:${MOCK_SSO_PORT:-9001}/authorize
+      SSO_REDIRECT_URI: http://localhost:${WEB_PORT:-5173}/auth/callback
       SEED_DEV_USERS: ${SEED_DEV_USERS:-true}
     depends_on:
       db:
