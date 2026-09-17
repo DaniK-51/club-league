@@ -19,6 +19,14 @@ export function useReports() {
   })
 }
 
+export function useReport(id: string) {
+  return useQuery({
+    queryKey: ['reports', id],
+    queryFn: () => api.getReport(id),
+    enabled: !!id,
+  })
+}
+
 export function useReportComments(reportId: string, enabled = true) {
   return useQuery({
     queryKey: ['reports', reportId, 'comments'],

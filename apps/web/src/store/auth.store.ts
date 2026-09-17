@@ -28,17 +28,22 @@ function persist(data: PersistedAuth | null) {
   }
 }
 
+// Restore auth state synchronously at module load
+const saved = loadPersisted()
+if (saved) {
+  api.setTokens(saved.accessToken, saved.refreshToken)
+}
+
 interface AuthState {
   user: MeResponse | null
   isAuthenticated: boolean
   setAuth: (user: MeResponse, accessToken: string, refreshToken: string) => void
   clear: () => void
-  init: () => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isAuthenticated: false,
+  user: saved?.user ?? null,
+  isAuthenticated: !!saved,
 
   setAuth: (user, accessToken, refreshToken) => {
     api.setTokens(accessToken, refreshToken)
@@ -51,17 +56,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     persist(null)
     set({ user: null, isAuthenticated: false })
   },
-
-  init: () => {
-    const saved = loadPersisted()
-    if (saved) {
-      api.setTokens(saved.accessToken, saved.refreshToken)
-      set({ user: saved.user, isAuthenticated: true })
-    }
-  },
 }))
 
-// Sync store when API client refreshes tokens
+// Clear store when API client loses tokens (refresh failed)
 api.setOnTokenChange((accessToken) => {
   if (!accessToken) {
     useAuthStore.getState().clear()

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { Check, X, MessageSquarePlus, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,6 +21,7 @@ interface ModerationCardProps {
 
 export function ModerationCard({ report }: ModerationCardProps) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const moderateReport = useModerateReport()
 
   const [showActions, setShowActions] = useState(false)
@@ -81,7 +83,12 @@ export function ModerationCard({ report }: ModerationCardProps) {
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="font-semibold">{report.criteriaCode}</span>
+            <button
+              onClick={() => navigate(`/reports/${report.id}`)}
+              className="font-semibold text-primary hover:underline"
+            >
+              {report.criteriaCode}
+            </button>
             <span className="text-sm text-muted-foreground">
               {report.clubName}
             </span>

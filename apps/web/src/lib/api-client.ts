@@ -163,6 +163,13 @@ class ApiClient {
     return this.request<CommentEntry[]>(`/api/reports/${id}/comments`)
   }
 
+  async postReportComment(id: string, body: string): Promise<CommentEntry> {
+    return this.request<CommentEntry>(`/api/reports/${id}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    })
+  }
+
   // === Moderation ===
 
   async moderateReport(

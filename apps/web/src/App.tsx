@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth.store'
 import { AppLayout } from '@/components/layout/app-layout'
@@ -29,12 +28,6 @@ function RequireAuth({
 }
 
 export default function App() {
-  const init = useAuthStore((s) => s.init)
-
-  useEffect(() => {
-    init()
-  }, [init])
-
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
