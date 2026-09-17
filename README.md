@@ -10,6 +10,7 @@
 - [`03_STRUCTURE.md`](./docs/03_STRUCTURE.md) — Структура монорепо (Frontend + Backend).
 - [`04_ARCHITECTURE.md`](./docs/04_ARCHITECTURE.md) — Диаграммы потоков данных и State Machine.
 - [`05_IMPLEMENTATION_PLAN.md`](./docs/05_IMPLEMENTATION_PLAN.md) — Пошаговый план имплементации и DoD.
+- [`06_AUDIT.md`](./docs/06_AUDIT.md) — **Система аудита: хеш-цепочка, типы действий, защита, API**.
 - [`shared/schema.prisma`](./docs/shared/schema.prisma) — Единая схема базы данных.
 - [`shared/api-contract.ts`](./docs/shared/api-contract.ts) — TypeScript-контракт API (DTO, Responses, Error Codes).
 - [`shared/rules-catalog.md`](./docs/shared/rules-catalog.md) — **Полный каталог 17+ типов правил, капов и лимитов (v2)**.
