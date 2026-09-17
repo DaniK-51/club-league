@@ -87,10 +87,11 @@ DRAFT → ON_MODERATION → APPROVED → COMPLETED → ARCHIVED
 - **Combined cap G1:** `C4 + C5 ≤ 15% of monthly total` — applied LAST, after all individual reports
 - **Manual override:** Moderator can set ANY `final_points` value (logged in audit)
 
-### Yandex Sheets Sync
+### Yandex Disk WebDAV Sync
 - **Event-driven with 1-hour debounce**
 - Full rating recalculation on every sync
-- Yandex is **read-only** — never write from Yandex back to our DB
+- Export: CSV overwrite via WebDAV (`https://webdav.yandex.ru`) — Basic auth (login + application password)
+- Yandex is **read-only mirror** — never write from Yandex back to our DB
 - Retry with exponential backoff, fallback to manual export
 
 ---

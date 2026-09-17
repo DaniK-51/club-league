@@ -72,6 +72,8 @@ model Report {
   status           ReportStatus   @default(DRAFT)
   calculatedPoints Int?
   finalPoints      Int?
+  calculationMethod String        @default("auto")
+  manualPoints      Int?
   
   isDeleted        Boolean        @default(false)
   deletedAt        DateTime?
@@ -85,7 +87,6 @@ model Report {
   moderationComment String?
 
   links            ReportLink[]
-  auditLogs        AuditLog[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 }
@@ -110,11 +111,12 @@ model ArchiveBatch {
 
 model AuditLog {
   id              String   @id @default(uuid())
+  seq             BigInt   @unique @default(autoincrement())
   prevHash        String   // SHA-256 предыдущей записи (для genesis: 64 нуля)
   hash            String   // SHA-256 текущей записи
   entityType      String   // "report", "rule", "user"
   entityId        String
-  action          String   // "created", "status_changed", "points_updated"
+  action          String   // "created", "status_changed", "points_updated", "sudo_action"
   oldValue        Json?
   newValue        Json?
   performedById   String
@@ -122,6 +124,30 @@ model AuditLog {
   performedByRole String
   performedAt     DateTime @default(now())
   reason          String?  // Обязательно для sudo-действий
+
+  @@index([entityType, entityId])
+  @@index([performedAt])
+}
+
+model SudoAction {
+  id            String   @id @default(uuid())
+  performedById String
+  action        String   // force_status | restore_deleted | override_points
+  entityType    String
+  entityId      String
+  oldValue      Json?
+  newValue      Json?
+  reason        String
+  performedAt   DateTime @default(now())
+}
+
+model AccessViolation {
+  id         String   @id @default(uuid())
+  userId     String?
+  path       String
+  method     String
+  detail     String
+  occurredAt DateTime @default(now())
 }
 
 enum UserRole {

@@ -1,0 +1,100 @@
+name: club-league
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: club-league-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-club_league}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-club_league}
+      POSTGRES_DB: ${POSTGRES_DB:-club_league}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - club_league_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-club_league} -d ${POSTGRES_DB:-club_league}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - club-league
+
+  mock-sso:
+    build:
+      context: ./apps/mock-sso
+      cache_from:
+        - type=gha
+    container_name: club-league-mock-sso
+    ports:
+      - "${MOCK_SSO_PORT:-9001}:9001"
+    environment:
+      CLIENT_ID: ${SSO_CLIENT_ID:-club-league-dev}
+      CLIENT_SECRET: ${SSO_CLIENT_SECRET:-club-league-dev-secret}
+      SELF_BASE_URL: http://127.0.0.1:${MOCK_SSO_PORT:-9001}
+      API_BASE_URL: http://127.0.0.1:${API_PORT:-8000}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9001/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - club-league
+
+  api:
+    build:
+      context: ./apps/api
+      cache_from:
+        - type=gha
+    container_name: club-league-api
+    ports:
+      - "${API_PORT:-8000}:${API_PORT:-8000}"
+    # apps/api/.env is the single source of truth for app settings.
+    # Docker-specific overrides below only swap hostnames for in-cluster networking.
+    env_file:
+      - ./apps/api/.env
+    environment:
+      API_PORT: ${API_PORT:-8000}
+      # In-cluster: DB host is `db`, SSO host is `mock-sso` (not 127.0.0.1).
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-club_league}:${POSTGRES_PASSWORD:-club_league}@db:5432/${POSTGRES_DB:-club_league}
+      SSO_TOKEN_URL: http://mock-sso:9001/token
+      SSO_USERINFO_URL: http://mock-sso:9001/userinfo
+      # Browser-facing URLs use localhost (user's browser, not container).
+      SSO_AUTHORIZE_URL: http://localhost:${MOCK_SSO_PORT:-9001}/authorize
+      SSO_REDIRECT_URI: http://localhost:${WEB_PORT:-5173}/auth/callback
+      SEED_DEV_USERS: ${SEED_DEV_USERS:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+      mock-sso:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "sh", "-c", "python -c \"import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:'+os.environ.get('API_PORT','8000')+'/health')\""]
+      interval: 10s
+      timeout: 3s
+      start_period: 20s
+      retries: 5
+    networks:
+      - club-league
+
+  swagger:
+    build:
+      context: ./apps/swagger
+    container_name: club-league-swagger
+    ports:
+      - "${SWAGGER_PORT:-8080}:8080"
+    environment:
+      API_HOST: api
+      API_PORT: ${API_PORT:-8000}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - club-league
+
+networks:
+  club-league:
+    driver: bridge
+
+volumes:
+  club_league_pgdata:

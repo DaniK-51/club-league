@@ -1,14 +1,14 @@
 # План имплементации MVP
 
 ## Backend (/apps/api)
-- [ ] **Шаг 1:** Инициализация FastAPI, SQLAlchemy, подключение к PostgreSQL. Настройка миграций (Alembic) по `schema.prisma`.
-- [ ] **Шаг 2:** Интеграция SSO (OAuth2/SAML) + Policy-based авторизация (модуль `policies/`).
-- [ ] **Шаг 3:** Реализация `AuditService` с криптографической цепочкой (hash chain) и триггерами БД (REVOKE).
-- [ ] **Шаг 4:** Ядро `RulesEngine`: реализация 3 базовых типов правил (tiered, scale, binary) + валидация JSONB через Pydantic.
-- [ ] **Шаг 5:** Полный CRUD отчётов (`reports.py`) с валидацией whitelist ссылок и soft warning дедлайна (7 дней).
-- [ ] **Шаг 6:** Логика модерации: переходы статусов, расчёт `finalPoints`, применение капов (включая combined cap C4+C5).
-- [ ] **Шаг 7:** Sudo mode: форсированные переходы и восстановление удалённых отчётов с обязательным `reason`.
-- [ ] **Шаг 8:** Sync Service: Debouncer (1 час) + клиент Yandex Sheets API с retry логикой.
+- [x] **Шаг 1:** Инициализация FastAPI, SQLAlchemy, подключение к PostgreSQL. Настройка миграций (Alembic) по `schema.prisma`.
+- [x] **Шаг 2:** Интеграция SSO (OAuth2/SAML) + Policy-based авторизация (модуль `policies/`). Dev: `apps/mock-sso` (roles/sudo only in our DB).
+- [x] **Шаг 3:** Реализация `AuditService` с криптографической цепочкой (hash chain) и триггерами БД (REVOKE). `seq` identity + advisory lock; verify script.
+- [x] **Шаг 4:** Ядро `RulesEngine`: реализация 3 базовых типов правил (tiered, scale, binary) + валидация JSONB через Pydantic.
+- [x] **Шаг 5:** Полный CRUD отчётов (`reports.py`) с валидацией whitelist ссылок и soft warning дедлайна (7 дней).
+- [x] **Шаг 6:** Логика модерации: переходы статусов, расчёт `finalPoints`, применение капов (включая combined cap C4+C5).
+- [x] **Шаг 7:** Sudo mode: форсированные переходы и восстановление удалённых отчётов с обязательным `reason`.
+- [x] **Шаг 8:** Sync Service: Debouncer (1 час) + клиент Yandex Disk WebDAV с retry логикой.
 
 ## Frontend (/apps/web)
 - [ ] **Шаг 1:** Инициализация Vite + React + Tailwind + shadcn/ui. Настройка i18next (RU/EN).
