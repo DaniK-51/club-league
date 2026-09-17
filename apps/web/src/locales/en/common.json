@@ -10,6 +10,14 @@
     "loginFailed": "Login failed",
     "tryAgain": "Try again"
   },
+  "common": {
+    "loading": "Loading…",
+    "submitting": "Submitting…",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "save": "Save",
+    "close": "Close"
+  },
   "nav": {
     "rating": "Rating",
     "reports": "My Reports",
@@ -18,13 +26,73 @@
   },
   "report": {
     "create": "Create Report",
-    "submit": "Submit for Moderation",
+    "submit": "Submit",
     "saveDraft": "Save Draft",
-    "overdueWarning": "This date looks unusual. Are you sure?",
-    "links": "Links",
+    "overdueWarning": "This date looks unusual (more than 7 days ago).",
+    "overdueTitle": "Confirm Date",
+    "overdueConfirm": "The activity date was more than 7 days ago. You can still submit — this is just a warning. Continue?",
+    "overdueProceed": "Continue",
+    "overdueBadge": "Overdue",
+    "links": "Proof Links",
+    "linksHint": "External links only: Google Docs, Telegram, VK, YouTube, Yandex Disk, GitHub, Notion, Dropbox, innopolis.university",
+    "linkPlaceholder": "https://...",
     "addLink": "Add Link",
     "criteria": "Criteria",
     "activityDate": "Activity Date",
+    "additionalData": "Additional Data",
+    "noExtraFields": "No extra fields required for this criteria.",
+    "pointsUnit": "pts",
+    "submitError": "Failed to create report",
+    "linkErrors": {
+      "invalidUrl": "Invalid URL",
+      "domainNotAllowed": "Domain not in whitelist",
+      "duplicate": "Link already added"
+    },
+    "fields": {
+      "count": "Count",
+      "level": "Level",
+      "variant": "Variant",
+      "partners": "Partners",
+      "crossType": "Cross-type collaboration",
+      "extraSocials": "Extra socials",
+      "fullClubFocus": "Full club focus",
+      "points": "Points ({{min}}–{{max}})",
+      "trainers": "Trainers",
+      "leaders": "Leaders",
+      "mode": "Mode",
+      "isHost": "Club is host"
+    },
+    "levels": {
+      "city": "City",
+      "kazan": "Kazan",
+      "regional": "Regional",
+      "region": "Region",
+      "rf": "Russian Federation",
+      "federal": "Federal",
+      "world": "World",
+      "abroad": "Abroad",
+      "local": "Local",
+      "national": "National",
+      "student": "Student",
+      "iu": "IU",
+      "other_rt": "Other RT region",
+      "other_rf": "Other RF region",
+      "internal_city": "Internal/City",
+      "campus": "Campus",
+      "city_offline": "City (offline)"
+    },
+    "variants": {
+      "passive": "Passive",
+      "active": "Active",
+      "not_informative": "Not informative",
+      "informative": "Informative",
+      "local_meetup": "Local meetup",
+      "large_conference": "Large conference"
+    },
+    "modes": {
+      "individual": "Individual",
+      "team": "Team"
+    },
     "status": {
       "DRAFT": "Draft",
       "ON_MODERATION": "On Moderation",
@@ -38,7 +106,9 @@
   },
   "reports": {
     "welcome": "Welcome, {{name}}",
-    "comingSoon": "Your reports will appear here."
+    "comingSoon": "Your reports will appear here.",
+    "listTitle": "My Reports",
+    "empty": "You have no reports yet."
   },
   "rating": {
     "title": "Club Rating",

@@ -70,12 +70,22 @@ export interface LoginResponse {
   user: MeResponse
 }
 
+export interface CriteriaRuleOut {
+  id: string
+  ruleType: string
+  config: Record<string, unknown>
+  priority: number
+  versionId: string
+  semester: string
+}
+
 export interface CriteriaOut {
   id: string
   code: string
   nameRu: string
   nameEn: string
   category: ClubCategory | null
+  rules: CriteriaRuleOut[]
 }
 
 export interface RatingClub {

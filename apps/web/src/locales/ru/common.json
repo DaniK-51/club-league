@@ -10,6 +10,14 @@
     "loginFailed": "Не удалось войти",
     "tryAgain": "Попробовать снова"
   },
+  "common": {
+    "loading": "Загрузка…",
+    "submitting": "Отправка…",
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "save": "Сохранить",
+    "close": "Закрыть"
+  },
   "nav": {
     "rating": "Рейтинг",
     "reports": "Мои отчёты",
@@ -18,13 +26,73 @@
   },
   "report": {
     "create": "Создать отчёт",
-    "submit": "Отправить на модерацию",
+    "submit": "Отправить",
     "saveDraft": "Сохранить черновик",
-    "overdueWarning": "Дата выглядит необычно. Вы уверены?",
-    "links": "Ссылки",
+    "overdueWarning": "Дата выглядит необычно (прошло более 7 дней).",
+    "overdueTitle": "Подтверждение даты",
+    "overdueConfirm": "Дата активности была более 7 дней назад. Отчёт всё равно можно отправить — это лишь предупреждение. Продолжить?",
+    "overdueProceed": "Продолжить",
+    "overdueBadge": "Просрочен",
+    "links": "Ссылки на пруфы",
+    "linksHint": "Только внешние ссылки: Google Docs, Telegram, VK, YouTube, Яндекс.Диск, GitHub, Notion, Dropbox, innopolis.university",
+    "linkPlaceholder": "https://...",
     "addLink": "Добавить ссылку",
     "criteria": "Критерий",
     "activityDate": "Дата активности",
+    "additionalData": "Дополнительные данные",
+    "noExtraFields": "Для этого критерия дополнительные поля не требуются.",
+    "pointsUnit": "баллов",
+    "submitError": "Ошибка при создании отчёта",
+    "linkErrors": {
+      "invalidUrl": "Некорректный URL",
+      "domainNotAllowed": "Домен не входит в whitelist",
+      "duplicate": "Ссылка уже добавлена"
+    },
+    "fields": {
+      "count": "Количество",
+      "level": "Уровень",
+      "variant": "Вариант",
+      "partners": "Партнёров",
+      "crossType": "Совместное мероприятие разных направлений",
+      "extraSocials": "Доп. соцсети",
+      "fullClubFocus": "Полный фокус на клуб",
+      "points": "Баллы ({{min}}–{{max}})",
+      "trainers": "Тренеров",
+      "leaders": "Лидеров",
+      "mode": "Формат",
+      "isHost": "Клуб — организатор"
+    },
+    "levels": {
+      "city": "Город",
+      "kazan": "Казань",
+      "regional": "Региональный",
+      "region": "Регион",
+      "rf": "РФ",
+      "federal": "Федеральный",
+      "world": "Мировой",
+      "abroad": "За рубежом",
+      "local": "Локальный",
+      "national": "Всероссийский",
+      "student": "Студенческий",
+      "iu": "ИУ",
+      "other_rt": "Другой регион РТ",
+      "other_rf": "Другой регион РФ",
+      "internal_city": "Внутренний/город",
+      "campus": "Кампус",
+      "city_offline": "Город (оффлайн)"
+    },
+    "variants": {
+      "passive": "Пассивное",
+      "active": "Активное",
+      "not_informative": "Не информативный",
+      "informative": "Информативный",
+      "local_meetup": "Локальный митап",
+      "large_conference": "Крупная конференция"
+    },
+    "modes": {
+      "individual": "Индивидуальный",
+      "team": "Командный"
+    },
     "status": {
       "DRAFT": "Черновик",
       "ON_MODERATION": "На модерации",
@@ -38,7 +106,9 @@
   },
   "reports": {
     "welcome": "Добро пожаловать, {{name}}",
-    "comingSoon": "Список отчётов появится здесь."
+    "comingSoon": "Список отчётов появится здесь.",
+    "listTitle": "Мои отчёты",
+    "empty": "У вас пока нет отчётов."
   },
   "rating": {
     "title": "Рейтинг клубов",

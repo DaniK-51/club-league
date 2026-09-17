@@ -44,7 +44,7 @@ export default function App() {
         <Route path="/rating" element={<RatingPage />} />
 
         <Route
-          path="/reports"
+          path="/reports/*"
           element={
             <RequireAuth roles={['CLUB_LEADER', 'MODERATOR']}>
               <ReportsPage />

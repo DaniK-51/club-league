@@ -1,21 +1,35 @@
+import { Route, Routes } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuthStore } from '@/store/auth.store'
-import { useMe } from '@/hooks/use-auth'
+import { ReportList } from '@/components/reports/report-list'
+import { ReportForm } from '@/components/reports/report-form'
 
-export default function ReportsPage() {
+function ReportsIndex() {
   const { t } = useTranslation()
-  const user = useAuthStore((s) => s.user)
-  const { data: me } = useMe()
 
   return (
-    <div>
+    <div className="space-y-6">
       <h1 className="text-2xl font-bold">{t('nav.reports')}</h1>
-      <p className="mt-2 text-muted-foreground">
-        {t('reports.welcome', { name: me?.name ?? user?.name ?? '' })}
-      </p>
-      <p className="mt-4 text-sm text-muted-foreground">
-        {t('reports.comingSoon')}
-      </p>
+      <ReportList />
     </div>
+  )
+}
+
+function NewReport() {
+  const { t } = useTranslation()
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">{t('report.create')}</h1>
+      <ReportForm />
+    </div>
+  )
+}
+
+export default function ReportsPage() {
+  return (
+    <Routes>
+      <Route index element={<ReportsIndex />} />
+      <Route path="new" element={<NewReport />} />
+    </Routes>
   )
 }
