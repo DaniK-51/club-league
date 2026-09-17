@@ -112,10 +112,13 @@
   },
   "rating": {
     "title": "Club Rating",
+    "subtitle": "Public rating based on completed reports",
     "club": "Club",
     "points": "Points",
     "semester": "Semester",
     "category": "Category",
+    "breakdown": "By criteria",
+    "empty": "No data for selected semester",
     "publicView": "Public club rating",
     "comingSoon": "Rating table will appear here."
   },
