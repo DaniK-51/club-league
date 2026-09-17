@@ -2,11 +2,13 @@
 
 ## Backend
 - Runtime: Python 3.11+
+- Package manager: **[uv](https://docs.astral.sh/uv/)** — единственный способ управления зависимостями (`uv sync`, `uv run …`). Не использовать `pip`/`venv`/`requirements.txt` вручную.
 - Framework: FastAPI
-- ORM: SQLAlchemy 2.0 (или Prisma Python)
+- ORM: SQLAlchemy 2.0 (async)
+- Миграции: **Alembic** (`alembic upgrade head`). `schema.prisma` — источник истины для схемы, но runtime-миграции — Alembic.
 - Валидация: Pydantic V2 (строго для всех DTO и JSONB-конфигов правил)
-- DB: PostgreSQL 15+
-- Auth: Интеграция с университетским SSO (OAuth2/SAML)
+- DB: PostgreSQL 16 (Docker Compose, `localhost:5432`)
+- Auth: University SSO (OAuth2) in prod. **Dev:** `apps/mock-sso` (same client path). SSO returns **only** `sub`/`email`/`name` — `role` and `can_sudo` live **only in our DB**.
 
 ## Frontend
 - Framework: React 18 + Vite (SPA, без Next.js SSR)
@@ -16,7 +18,7 @@
 - i18n: i18next (полная поддержка RU/EN)
 
 ## Инфраструктура и интеграции
-- Yandex Sheets API: для синхронизации рейтинга (debounce 1 час, retry с exponential backoff).
+- Yandex Disk **WebDAV** (`https://webdav.yandex.ru`): PUT rating CSV (overwrite). Basic auth: login + application password. Debounce 1 час, retry exponential backoff.
 - Часовой пояс: Все дедлайны и сравнения дат строго в `Europe/Moscow` (UTC+3).
 
 ## Архитектурные правила
