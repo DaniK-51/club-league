@@ -32,10 +32,6 @@ class ApiClient {
     this.onTokenChange = listener
   }
 
-  getAccessToken() {
-    return this.accessToken
-  }
-
   private async tryRefresh(): Promise<boolean> {
     if (!this.refreshToken) return false
     if (this.refreshPromise) return this.refreshPromise
@@ -105,13 +101,6 @@ class ApiClient {
     return this.request<LoginResponse>('/api/auth/sso/callback', {
       method: 'POST',
       body: JSON.stringify({ code }),
-    })
-  }
-
-  async refreshTokens(): Promise<LoginResponse> {
-    return this.request<LoginResponse>('/api/auth/refresh', {
-      method: 'POST',
-      body: JSON.stringify({ refreshToken: this.refreshToken }),
     })
   }
 

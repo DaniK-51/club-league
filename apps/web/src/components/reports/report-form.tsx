@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog } from '@/components/ui/dialog'
+import { SelectField } from '@/components/ui/form-fields'
 import { LinkInput } from './link-input'
 import { DynamicRuleFields } from './dynamic-rule-fields'
 import { useCriteria, useCreateReport } from '@/hooks/use-reports'
@@ -79,26 +80,19 @@ export function ReportForm() {
     <>
       <form onSubmit={handleSubmit} className="max-w-2xl space-y-6">
         {/* Criteria select */}
-        <div className="space-y-1.5">
-          <Label htmlFor="criteria">{t('report.criteria')}</Label>
-          <select
-            id="criteria"
-            value={criteriaId}
-            onChange={(e) => {
-              setCriteriaId(e.target.value)
-              setReportData({})
-            }}
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            required
-          >
-            <option value="">—</option>
-            {criteriaList?.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.code} — {i18n.language === 'ru' ? c.nameRu : c.nameEn}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SelectField
+          label={t('report.criteria')}
+          value={criteriaId}
+          options={(criteriaList ?? []).map((c) => ({
+            value: c.id,
+            label: `${c.code} — ${i18n.language === 'ru' ? c.nameRu : c.nameEn}`,
+          }))}
+          onChange={(v) => {
+            setCriteriaId(v)
+            setReportData({})
+          }}
+          id="criteria"
+        />
 
         {/* Activity date */}
         <div className="space-y-1.5">

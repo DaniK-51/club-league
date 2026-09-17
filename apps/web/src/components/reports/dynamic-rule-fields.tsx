@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { NumberField, SelectField, CheckboxField } from '@/components/ui/form-fields'
 import type { CriteriaRuleOut } from '@/lib/types'
 
 interface DynamicFieldsProps {
@@ -9,10 +8,17 @@ interface DynamicFieldsProps {
   onChange: (values: Record<string, unknown>) => void
 }
 
-/**
- * Renders form fields based on rule type config.
- * Field names come from rule config (e.g. level_field, count_field).
- */
+function getField(config: Record<string, unknown>, key: string, fallback: string): string {
+  return (config[key] as string) ?? fallback
+}
+
+function levelOptions(levels: Record<string, number>, t: (key: string, fallback: string) => string) {
+  return Object.keys(levels).map((k) => ({
+    value: k,
+    label: t(`report.levels.${k}`, k),
+  }))
+}
+
 export function DynamicRuleFields({ rule, values, onChange }: DynamicFieldsProps) {
   const { t } = useTranslation()
   const config = rule.config as Record<string, unknown>
@@ -21,15 +27,19 @@ export function DynamicRuleFields({ rule, values, onChange }: DynamicFieldsProps
     onChange({ ...values, [key]: value })
   }
 
+  const num = (key: string) => (values[key] as number) ?? ''
+  const str = (key: string) => (values[key] as string) ?? ''
+  const bool = (key: string) => (values[key] as boolean) ?? false
+
   switch (rule.ruleType) {
     case 'tiered':
     case 'tiered_with_bonus': {
-      const countField = (config.count_field as string) ?? 'count'
+      const field = getField(config, 'count_field', 'count')
       return (
         <NumberField
           label={t('report.fields.count')}
-          value={values[countField] as number ?? ''}
-          onChange={(v) => setField(countField, v)}
+          value={num(field)}
+          onChange={(v) => setField(field, v)}
           min={0}
         />
       )
@@ -38,17 +48,14 @@ export function DynamicRuleFields({ rule, values, onChange }: DynamicFieldsProps
     case 'scale':
     case 'scale_with_frequency_limit':
     case 'scale_with_league_bonus': {
-      const levelField = (config.level_field as string) ?? 'level'
+      const field = getField(config, 'level_field', 'level')
       const levels = (config.levels as Record<string, number>) ?? {}
       return (
         <SelectField
           label={t('report.fields.level')}
-          value={(values[levelField] as string) ?? ''}
-          options={Object.keys(levels).map((k) => ({
-            value: k,
-            label: t(`report.levels.${k}`, k),
-          }))}
-          onChange={(v) => setField(levelField, v)}
+          value={str(field)}
+          options={levelOptions(levels, t)}
+          onChange={(v) => setField(field, v)}
         />
       )
     }
@@ -56,44 +63,41 @@ export function DynamicRuleFields({ rule, values, onChange }: DynamicFieldsProps
     case 'binary':
     case 'binary_with_monthly_cap':
     case 'binary_scale': {
-      const variantField = (config.variant_field as string) ?? 'variant'
-      // config may be flat ({passive: 100, active: 350}) or {options: {...}}
+      const field = getField(config, 'variant_field', 'variant')
       const options =
         (config.options as Record<string, number>) ??
         Object.fromEntries(
           Object.entries(config).filter(
-            ([k, v]) =>
-              typeof v === 'number' &&
-              !['monthly_cap'].includes(k)
+            ([k, v]) => typeof v === 'number' && k !== 'monthly_cap'
           )
         )
       return (
         <SelectField
           label={t('report.fields.variant')}
-          value={(values[variantField] as string) ?? ''}
+          value={str(field)}
           options={Object.keys(options).map((k) => ({
             value: k,
             label: t(`report.variants.${k}`, k),
           }))}
-          onChange={(v) => setField(variantField, v)}
+          onChange={(v) => setField(field, v)}
         />
       )
     }
 
     case 'per_unit_with_bonus': {
-      const partnersField = (config.partners_field as string) ?? 'partners'
-      const crossTypeField = (config.cross_type_field as string) ?? 'cross_type'
+      const partnersField = getField(config, 'partners_field', 'partners')
+      const crossTypeField = getField(config, 'cross_type_field', 'cross_type')
       return (
         <div className="space-y-4">
           <NumberField
             label={t('report.fields.partners')}
-            value={values[partnersField] as number ?? ''}
+            value={num(partnersField)}
             onChange={(v) => setField(partnersField, v)}
             min={1}
           />
           <CheckboxField
             label={t('report.fields.crossType')}
-            value={(values[crossTypeField] as boolean) ?? false}
+            value={bool(crossTypeField)}
             onChange={(v) => setField(crossTypeField, v)}
           />
         </div>
@@ -101,35 +105,32 @@ export function DynamicRuleFields({ rule, values, onChange }: DynamicFieldsProps
     }
 
     case 'fixed_monthly_with_per_unit': {
-      const extraField = (config.extra_field as string) ?? 'extra_socials'
+      const field = getField(config, 'extra_field', 'extra_socials')
       return (
         <NumberField
           label={t('report.fields.extraSocials')}
-          value={values[extraField] as number ?? ''}
-          onChange={(v) => setField(extraField, v)}
+          value={num(field)}
+          onChange={(v) => setField(field, v)}
           min={0}
         />
       )
     }
 
     case 'scale_with_conditional_bonus': {
-      const levelField = (config.level_field as string) ?? 'level'
-      const focusField = (config.focus_field as string) ?? 'full_club_focus'
+      const levelField = getField(config, 'level_field', 'level')
+      const focusField = getField(config, 'focus_field', 'full_club_focus')
       const levels = (config.levels as Record<string, number>) ?? {}
       return (
         <div className="space-y-4">
           <SelectField
             label={t('report.fields.level')}
-            value={(values[levelField] as string) ?? ''}
-            options={Object.keys(levels).map((k) => ({
-              value: k,
-              label: t(`report.levels.${k}`, k),
-            }))}
+            value={str(levelField)}
+            options={levelOptions(levels, t)}
             onChange={(v) => setField(levelField, v)}
           />
           <CheckboxField
             label={t('report.fields.fullClubFocus')}
-            value={(values[focusField] as boolean) ?? false}
+            value={bool(focusField)}
             onChange={(v) => setField(focusField, v)}
           />
         </div>
@@ -137,14 +138,14 @@ export function DynamicRuleFields({ rule, values, onChange }: DynamicFieldsProps
     }
 
     case 'discretionary': {
-      const pointsField = (config.points_field as string) ?? 'points'
+      const field = getField(config, 'points_field', 'points')
       const min = (config.min as number) ?? 0
       const max = (config.max as number) ?? 300
       return (
         <NumberField
           label={t('report.fields.points', { min, max })}
-          value={values[pointsField] as number ?? ''}
-          onChange={(v) => setField(pointsField, v)}
+          value={num(field)}
+          onChange={(v) => setField(field, v)}
           min={min}
           max={max}
         />
@@ -152,17 +153,14 @@ export function DynamicRuleFields({ rule, values, onChange }: DynamicFieldsProps
     }
 
     case 'per_person_per_month': {
-      const trainersField = (config.trainers_field as string) ?? 'trainers'
-      const leadersField = (config.leaders_field as string) ?? 'leaders'
       const hasTrainers = config.per_trainer_per_month != null
-      const field = hasTrainers ? trainersField : leadersField
-      const label = hasTrainers
-        ? t('report.fields.trainers')
-        : t('report.fields.leaders')
+      const field = hasTrainers
+        ? getField(config, 'trainers_field', 'trainers')
+        : getField(config, 'leaders_field', 'leaders')
       return (
         <NumberField
-          label={label}
-          value={values[field] as number ?? ''}
+          label={hasTrainers ? t('report.fields.trainers') : t('report.fields.leaders')}
+          value={num(field)}
           onChange={(v) => setField(field, v)}
           min={1}
         />
@@ -171,9 +169,10 @@ export function DynamicRuleFields({ rule, values, onChange }: DynamicFieldsProps
 
     case 'scale_split_mode':
     case 'scale_with_conditional_modifier': {
-      const modeField = (config.mode_field as string) ?? 'mode'
-      const levelField = (config.level_field as string) ?? 'level'
-      const mode = (values[modeField] as string) ?? 'individual'
+      const modeField = getField(config, 'mode_field', 'mode')
+      const levelField = getField(config, 'level_field', 'level')
+      const isHostField = getField(config, 'is_host_field', 'is_host')
+      const mode = str(modeField) || 'individual'
       const levels =
         (config[mode] as Record<string, number>) ??
         (config.individual as Record<string, number>) ??
@@ -194,117 +193,26 @@ export function DynamicRuleFields({ rule, values, onChange }: DynamicFieldsProps
           />
           <SelectField
             label={t('report.fields.level')}
-            value={(values[levelField] as string) ?? ''}
-            options={Object.keys(levels).map((k) => ({
-              value: k,
-              label: t(`report.levels.${k}`, k),
-            }))}
+            value={str(levelField)}
+            options={levelOptions(levels, t)}
             onChange={(v) => setField(levelField, v)}
           />
           {rule.ruleType === 'scale_with_conditional_modifier' && (
             <CheckboxField
               label={t('report.fields.isHost')}
-              value={
-                (values[(config.is_host_field as string) ?? 'is_host'] as boolean) ?? false
-              }
-              onChange={(v) =>
-                setField((config.is_host_field as string) ?? 'is_host', v)
-              }
+              value={bool(isHostField)}
+              onChange={(v) => setField(isHostField, v)}
             />
           )}
         </div>
       )
     }
 
-    case 'fixed_per_event_with_monthly_cap':
-    case 'combined_cap':
     default:
-      // No extra fields needed — links + date are enough
       return (
         <p className="text-sm text-muted-foreground">
           {t('report.noExtraFields')}
         </p>
       )
   }
-}
-
-// === Primitive field components ===
-
-function NumberField({
-  label,
-  value,
-  onChange,
-  min,
-  max,
-}: {
-  label: string
-  value: number | ''
-  onChange: (v: number) => void
-  min?: number
-  max?: number
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <Input
-        type="number"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        min={min}
-        max={max}
-      />
-    </div>
-  )
-}
-
-function SelectField({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string
-  value: string
-  options: { value: string; label: string }[]
-  onChange: (v: string) => void
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-      >
-        <option value="">—</option>
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  )
-}
-
-function CheckboxField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: boolean
-  onChange: (v: boolean) => void
-}) {
-  return (
-    <label className="flex items-center gap-2 text-sm">
-      <input
-        type="checkbox"
-        checked={value}
-        onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-input"
-      />
-      {label}
-    </label>
-  )
 }

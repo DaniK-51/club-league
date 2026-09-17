@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { useReportComments } from '@/hooks/use-moderation'
+import { useReportComments } from '@/hooks/use-reports'
 import { formatDate } from '@/lib/date-utils'
 
 interface CommentThreadProps {

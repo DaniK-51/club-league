@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Archive } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ModerationCard } from './moderation-card'
-import { useAllReports, useArchiveReports } from '@/hooks/use-moderation'
+import { useReports, useArchiveReports } from '@/hooks/use-reports'
 import type { ReportStatus } from '@/lib/types'
 
 const STATUS_FILTERS: (ReportStatus | 'ALL')[] = [
@@ -18,7 +18,7 @@ const STATUS_FILTERS: (ReportStatus | 'ALL')[] = [
 
 export function ModerationQueue() {
   const { t } = useTranslation()
-  const { data: reports, isLoading } = useAllReports()
+  const { data: reports, isLoading } = useReports()
   const archiveReports = useArchiveReports()
 
   const [statusFilter, setStatusFilter] = useState<ReportStatus | 'ALL'>(

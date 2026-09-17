@@ -16,12 +16,16 @@ export function LinkInput({ links, onChange }: LinkInputProps) {
   const [inputValue, setInputValue] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  const ERROR_MESSAGES: Record<string, string> = {
+    INVALID_URL: t('report.linkErrors.invalidUrl'),
+    DOMAIN_NOT_ALLOWED: t('report.linkErrors.domainNotAllowed'),
+    DUPLICATE: t('report.linkErrors.duplicate'),
+  }
+
   const addLink = () => {
     const result = validateLink(inputValue, links)
     if (!result.valid) {
-      if (result.error === 'INVALID_URL') setError(t('report.linkErrors.invalidUrl'))
-      else if (result.error === 'DOMAIN_NOT_ALLOWED') setError(t('report.linkErrors.domainNotAllowed'))
-      else if (result.error === 'DUPLICATE') setError(t('report.linkErrors.duplicate'))
+      setError(ERROR_MESSAGES[result.error] ?? t('report.linkErrors.invalidUrl'))
       return
     }
     setError(null)
