@@ -54,6 +54,7 @@
     "details": "Детали",
     "calculationParams": "За что начисляются баллы",
     "calculationParamsHint": "Параметры, по которым рассчитываются баллы",
+    "submittedValues": "Указанные параметры",
     "editParams": "Изменить параметры",
     "saveParamsError": "Ошибка при сохранении параметров",
     "commentPlaceholder": "Написать комментарий…",

@@ -54,6 +54,7 @@
     "details": "Details",
     "calculationParams": "Points Breakdown",
     "calculationParamsHint": "Parameters used to calculate points",
+    "submittedValues": "Submitted parameters",
     "editParams": "Edit Parameters",
     "saveParamsError": "Failed to save parameters",
     "commentPlaceholder": "Write a comment…",

@@ -26,6 +26,9 @@ import { useAuthStore } from '@/store/auth.store'
 import { ApiError } from '@/lib/types'
 import type { ReportResponse, CriteriaRuleOut } from '@/lib/types'
 
+const MODERATOR_EDIT_STATUSES = ['ON_MODERATION', 'DISPUTED', 'CHANGES_REQUIRED', 'APPROVED']
+const LEADER_EDIT_STATUSES = ['DRAFT', 'CHANGES_REQUIRED']
+
 interface ReportSidebarProps {
   report: ReportResponse
   rule: CriteriaRuleOut | undefined
@@ -33,6 +36,17 @@ interface ReportSidebarProps {
 }
 
 export function ReportSidebar({ report, rule, onNavigateBack }: ReportSidebarProps) {
+  return (
+    <ReportSidebarInner
+      key={report.id}
+      report={report}
+      rule={rule}
+      onNavigateBack={onNavigateBack}
+    />
+  )
+}
+
+function ReportSidebarInner({ report, rule, onNavigateBack }: ReportSidebarProps) {
   const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
   const submitReport = useSubmitReport()
@@ -44,8 +58,10 @@ export function ReportSidebar({ report, rule, onNavigateBack }: ReportSidebarPro
   const [finalPoints, setFinalPoints] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
 
-  // Report data editing state
-  const [reportData, setReportData] = useState<Record<string, unknown>>({})
+  // Report data editing state — initialized from report on mount
+  const [reportData, setReportData] = useState<Record<string, unknown>>(
+    () => report.reportData ?? {}
+  )
   const [editingParams, setEditingParams] = useState(false)
 
   const isModerator = user?.role === 'MODERATOR'
@@ -57,8 +73,8 @@ export function ReportSidebar({ report, rule, onNavigateBack }: ReportSidebarPro
   const canModerate =
     report.status === 'ON_MODERATION' || report.status === 'DISPUTED'
   const canEditParams =
-    isModerator ||
-    (isLeader && (report.status === 'DRAFT' || report.status === 'CHANGES_REQUIRED'))
+    (isModerator && MODERATOR_EDIT_STATUSES.includes(report.status)) ||
+    (isLeader && LEADER_EDIT_STATUSES.includes(report.status))
 
   const handleModerate = (
     status: 'APPROVED' | 'CHANGES_REQUIRED' | 'CLOSED'
@@ -196,6 +212,18 @@ export function ReportSidebar({ report, rule, onNavigateBack }: ReportSidebarPro
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Submitted values */}
+              {Object.keys(report.reportData ?? {}).length > 0 && (
+                <div className="rounded-md bg-muted/50 p-2">
+                  <div className="mb-1 text-xs font-medium text-muted-foreground">
+                    {t('report.submittedValues')}
+                  </div>
+                  <SubmittedValues
+                    rule={rule}
+                    data={report.reportData}
+                  />
+                </div>
+              )}
               <RuleConfigDisplay rule={rule} />
               {canEditParams && (
                 <Button
@@ -344,6 +372,54 @@ function SidebarSection({
         </h3>
       </div>
       <div className="p-3">{children}</div>
+    </div>
+  )
+}
+
+function SubmittedValues({
+  rule,
+  data,
+}: {
+  rule: CriteriaRuleOut
+  data: Record<string, unknown>
+}) {
+  const { t } = useTranslation()
+  const config = rule.config as Record<string, unknown>
+  const fieldDefs = getFieldDefs(rule.ruleType, config)
+
+  if (fieldDefs.length === 0) {
+    // Show raw data if no field defs
+    return (
+      <div className="space-y-1">
+        {Object.entries(data).map(([key, value]) => (
+          <div key={key} className="flex justify-between text-xs">
+            <span className="text-muted-foreground">{key}</span>
+            <span className="font-medium">{String(value)}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-1">
+      {fieldDefs.map((field) => {
+        const value = data[field.key]
+        if (value == null || value === '') return null
+        let display: string
+        if (field.type === 'select' && field.options) {
+          const opt = field.options.find((o) => o.value === value)
+          display = opt ? t(opt.labelKey, opt.value) : String(value)
+        } else {
+          display = String(value)
+        }
+        return (
+          <div key={field.key} className="flex justify-between text-xs">
+            <span className="text-muted-foreground">{t(field.labelKey)}</span>
+            <span className="font-medium">{display}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }

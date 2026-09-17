@@ -53,6 +53,7 @@ export interface ReportResponse {
   calculatedPoints: number | null
   finalPoints: number | null
   links: ReportLink[]
+  reportData: Record<string, unknown>
 }
 
 export interface MeResponse {
