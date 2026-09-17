@@ -1,0 +1,48 @@
+{
+  "app": {
+    "name": "Club League",
+    "login": "Login with SSO",
+    "logout": "Logout"
+  },
+  "nav": {
+    "rating": "Rating",
+    "reports": "My Reports",
+    "moderation": "Moderation",
+    "admin": "Admin"
+  },
+  "report": {
+    "create": "Create Report",
+    "submit": "Submit for Moderation",
+    "saveDraft": "Save Draft",
+    "overdueWarning": "This date looks unusual. Are you sure?",
+    "links": "Links",
+    "addLink": "Add Link",
+    "criteria": "Criteria",
+    "activityDate": "Activity Date",
+    "status": {
+      "DRAFT": "Draft",
+      "ON_MODERATION": "On Moderation",
+      "CHANGES_REQUIRED": "Changes Required",
+      "APPROVED": "Approved",
+      "DISPUTED": "Disputed",
+      "COMPLETED": "Completed",
+      "CLOSED": "Closed",
+      "ARCHIVED": "Archived"
+    }
+  },
+  "rating": {
+    "title": "Club Rating",
+    "club": "Club",
+    "points": "Points",
+    "semester": "Semester",
+    "category": "Category"
+  },
+  "moderation": {
+    "approve": "Approve",
+    "reject": "Reject",
+    "requestChanges": "Request Changes",
+    "comment": "Comment",
+    "commentRequired": "Comment is required",
+    "finalPoints": "Final Points"
+  }
+}

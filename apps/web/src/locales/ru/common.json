@@ -1,0 +1,48 @@
+{
+  "app": {
+    "name": "Лига Клубов",
+    "login": "Войти через SSO",
+    "logout": "Выйти"
+  },
+  "nav": {
+    "rating": "Рейтинг",
+    "reports": "Мои отчёты",
+    "moderation": "Модерация",
+    "admin": "Админ"
+  },
+  "report": {
+    "create": "Создать отчёт",
+    "submit": "Отправить на модерацию",
+    "saveDraft": "Сохранить черновик",
+    "overdueWarning": "Дата выглядит необычно. Вы уверены?",
+    "links": "Ссылки",
+    "addLink": "Добавить ссылку",
+    "criteria": "Критерий",
+    "activityDate": "Дата активности",
+    "status": {
+      "DRAFT": "Черновик",
+      "ON_MODERATION": "На модерации",
+      "CHANGES_REQUIRED": "Требуются правки",
+      "APPROVED": "Одобрено",
+      "DISPUTED": "Оспаривается",
+      "COMPLETED": "Завершено",
+      "CLOSED": "Закрыто",
+      "ARCHIVED": "В архиве"
+    }
+  },
+  "rating": {
+    "title": "Рейтинг клубов",
+    "club": "Клуб",
+    "points": "Баллы",
+    "semester": "Семестр",
+    "category": "Категория"
+  },
+  "moderation": {
+    "approve": "Одобрить",
+    "reject": "Отклонить",
+    "requestChanges": "Требуются правки",
+    "comment": "Комментарий",
+    "commentRequired": "Комментарий обязателен",
+    "finalPoints": "Итоговые баллы"
+  }
+}
