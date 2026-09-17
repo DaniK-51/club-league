@@ -83,6 +83,15 @@ export function useCompleteReport() {
   })
 }
 
+export function useDisputeReport() {
+  const invalidate = useInvalidateReports()
+  return useMutation({
+    mutationFn: ({ id, comment }: { id: string; comment: string }) =>
+      api.disputeReport(id, comment),
+    onSuccess: invalidate,
+  })
+}
+
 export function useArchiveReports() {
   const invalidate = useInvalidateReports()
   return useMutation({

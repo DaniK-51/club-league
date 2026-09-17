@@ -7,6 +7,8 @@ import {
   Send,
   Trash2,
   Save,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,13 +16,15 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { ReportLinks } from '@/components/ui/report-links'
-import { RuleConfigDisplay } from './rule-config-display'
 import {
   useSubmitReport,
   useDeleteReport,
   useModerateReport,
+  useCompleteReport,
+  useDisputeReport,
 } from '@/hooks/use-reports'
 import { useUpdateReportData } from '@/hooks/use-report-data'
+import { useSetCalculation } from '@/hooks/use-calculation'
 import { formatDate } from '@/lib/date-utils'
 import { useAuthStore } from '@/store/auth.store'
 import { ApiError } from '@/lib/types'
@@ -32,31 +36,47 @@ const LEADER_EDIT_STATUSES = ['DRAFT', 'CHANGES_REQUIRED']
 interface ReportSidebarProps {
   report: ReportResponse
   rule: CriteriaRuleOut | undefined
+  criteriaName?: string
   onNavigateBack: () => void
 }
 
-export function ReportSidebar({ report, rule, onNavigateBack }: ReportSidebarProps) {
+export function ReportSidebar({ report, rule, criteriaName, onNavigateBack }: ReportSidebarProps) {
   return (
     <ReportSidebarInner
       key={report.id}
       report={report}
       rule={rule}
+      criteriaName={criteriaName}
       onNavigateBack={onNavigateBack}
     />
   )
 }
 
-function ReportSidebarInner({ report, rule, onNavigateBack }: ReportSidebarProps) {
+function ReportSidebarInner({ report, rule, criteriaName, onNavigateBack }: ReportSidebarProps) {
   const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
   const submitReport = useSubmitReport()
   const deleteReport = useDeleteReport()
   const moderateReport = useModerateReport()
+  const completeReport = useCompleteReport()
+  const disputeReport = useDisputeReport()
   const updateReportData = useUpdateReportData(report.id)
+  const setCalculation = useSetCalculation(report.id)
 
   const [comment, setComment] = useState('')
+  const [disputeComment, setDisputeComment] = useState('')
+  const [showDisputeForm, setShowDisputeForm] = useState(false)
   const [finalPoints, setFinalPoints] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
+
+  // Result editing state
+  const [editingResult, setEditingResult] = useState(false)
+  const [calcMode, setCalcMode] = useState<'auto' | 'manual'>(
+    report.finalPoints != null ? 'manual' : 'auto'
+  )
+  const [manualPoints, setManualPoints] = useState(
+    report.finalPoints?.toString() ?? ''
+  )
 
   // Report data editing state — initialized from report on mount
   const [reportData, setReportData] = useState<Record<string, unknown>>(
@@ -72,6 +92,8 @@ function ReportSidebarInner({ report, rule, onNavigateBack }: ReportSidebarProps
   const canDelete = report.status === 'DRAFT'
   const canModerate =
     report.status === 'ON_MODERATION' || report.status === 'DISPUTED'
+  const canComplete = report.status === 'APPROVED'
+  const canDispute = report.status === 'APPROVED'
   const canEditParams =
     (isModerator && MODERATOR_EDIT_STATUSES.includes(report.status)) ||
     (isLeader && LEADER_EDIT_STATUSES.includes(report.status))
@@ -125,6 +147,24 @@ function ReportSidebarInner({ report, rule, onNavigateBack }: ReportSidebarProps
     )
   }
 
+  const handleSaveResult = () => {
+    setActionError(null)
+    setCalculation.mutate(
+      {
+        method: calcMode,
+        ...(calcMode === 'manual' ? { manualPoints: Number(manualPoints) || 0 } : {}),
+      },
+      {
+        onSuccess: () => setEditingResult(false),
+        onError: (err) => {
+          setActionError(
+            err instanceof ApiError ? err.message : t('moderation.actionError')
+          )
+        },
+      }
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Status */}
@@ -162,29 +202,133 @@ function ReportSidebarInner({ report, rule, onNavigateBack }: ReportSidebarProps
 
       {/* Points */}
       <SidebarSection title={t('report.points')}>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">
-              {t('moderation.calculated')}
-            </span>
-            <span className="font-medium">
-              {report.calculatedPoints ?? '—'}
-            </span>
+        <div className="space-y-3">
+          <div className="space-y-2 text-sm">
+            {/* Calculated points — always shown */}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">
+                {t('moderation.calculated')}
+              </span>
+              <span className="font-semibold">
+                {report.calculatedPoints ?? '—'}
+              </span>
+            </div>
+
+            {/* Calculation method */}
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">
+                {t('moderation.calcMethod')}
+              </span>
+              <span>
+                {t(`moderation.calcModes.${report.calculationMethod ?? 'auto'}`)}
+              </span>
+            </div>
+
+            {/* Manual points — when method is manual */}
+            {report.calculationMethod === 'manual' && report.manualPoints != null && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">
+                  {t('moderation.manualPoints')}
+                </span>
+                <span className="font-semibold text-orange-600">
+                  {report.manualPoints}
+                </span>
+              </div>
+            )}
+
+            {/* Final points — only on late stages when set */}
+            {report.finalPoints != null && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">
+                  {t('moderation.final')}
+                </span>
+                <span className="font-semibold text-primary">
+                  {report.finalPoints}
+                </span>
+              </div>
+            )}
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">
-              {t('moderation.final')}
-            </span>
-            <span className="font-semibold text-primary">
-              {report.finalPoints ?? '—'}
-            </span>
-          </div>
+
+          {/* Moderator: edit result */}
+          {isModerator && canModerate && (
+            <div className="space-y-2">
+              {editingResult ? (
+                <div className="space-y-2 rounded-md bg-muted/30 p-2">
+                  <Label className="text-xs">
+                    {t('moderation.calcMethod')}
+                  </Label>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant={calcMode === 'auto' ? 'default' : 'outline'}
+                      onClick={() => setCalcMode('auto')}
+                    >
+                      {t('moderation.calcModes.auto')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={calcMode === 'manual' ? 'default' : 'outline'}
+                      onClick={() => setCalcMode('manual')}
+                    >
+                      {t('moderation.calcModes.manual')}
+                    </Button>
+                  </div>
+                  {calcMode === 'manual' && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">
+                        {t('moderation.manualPoints')}
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={manualPoints}
+                        onChange={(e) => setManualPoints(e.target.value)}
+                        placeholder={
+                          report.calculatedPoints?.toString() ?? '0'
+                        }
+                        className="h-8"
+                      />
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleSaveResult}
+                      disabled={setCalculation.isPending}
+                    >
+                      <Save className="h-3 w-3" />
+                      {t('common.save')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditingResult(false)}
+                    >
+                      {t('common.cancel')}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setCalcMode(report.calculationMethod ?? 'auto')
+                    setManualPoints(report.manualPoints?.toString() ?? '')
+                    setEditingResult(true)
+                  }}
+                >
+                  {t('report.editResult')}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </SidebarSection>
 
-      {/* Calculation Parameters */}
+      {/* Parameters */}
       {rule && (
-        <SidebarSection title={t('report.calculationParams')}>
+        <SidebarSection title={t('report.parameters')}>
           {editingParams ? (
             <div className="space-y-3">
               <ParamEditor
@@ -212,19 +356,20 @@ function ReportSidebarInner({ report, rule, onNavigateBack }: ReportSidebarProps
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Criteria code + name */}
+              <div>
+                <span className="font-medium">{report.criteriaCode}</span>
+                {criteriaName && (
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    {criteriaName}
+                  </span>
+                )}
+              </div>
+
               {/* Submitted values */}
-              {Object.keys(report.reportData ?? {}).length > 0 && (
-                <div className="rounded-md bg-muted/50 p-2">
-                  <div className="mb-1 text-xs font-medium text-muted-foreground">
-                    {t('report.submittedValues')}
-                  </div>
-                  <SubmittedValues
-                    rule={rule}
-                    data={report.reportData}
-                  />
-                </div>
-              )}
-              <RuleConfigDisplay rule={rule} />
+              <SubmittedValues rule={rule} data={report.reportData ?? {}} />
+
+              {/* Edit button — only when possible */}
               {canEditParams && (
                 <Button
                   size="sm"
@@ -236,25 +381,6 @@ function ReportSidebarInner({ report, rule, onNavigateBack }: ReportSidebarProps
               )}
             </div>
           )}
-        </SidebarSection>
-      )}
-
-      {/* Moderator: final points override */}
-      {isModerator && canModerate && (
-        <SidebarSection title={t('moderation.overridePoints')}>
-          <Input
-            type="number"
-            min={0}
-            value={finalPoints}
-            onChange={(e) => setFinalPoints(e.target.value)}
-            placeholder={
-              report.calculatedPoints?.toString() ??
-              t('moderation.pointsPlaceholder')
-            }
-          />
-          <p className="mt-1 text-xs text-muted-foreground">
-            {t('moderation.overrideHint')}
-          </p>
         </SidebarSection>
       )}
 
@@ -325,6 +451,93 @@ function ReportSidebarInner({ report, rule, onNavigateBack }: ReportSidebarProps
               {t('report.submit')}
             </Button>
           )}
+
+          {/* Leader: Complete or Dispute when APPROVED */}
+          {isLeader && canComplete && !showDisputeForm && (
+            <div className="flex flex-col gap-2">
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={() => completeReport.mutate(report.id)}
+                disabled={completeReport.isPending}
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                {t('report.complete')}
+              </Button>
+              {canDispute && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowDisputeForm(true)}
+                >
+                  <AlertCircle className="h-3 w-3" />
+                  {t('report.dispute')}
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Leader: Dispute form */}
+          {isLeader && showDisputeForm && (
+            <div className="space-y-2">
+              <Label htmlFor="disputeComment" className="text-xs">
+                {t('report.disputeComment')}
+              </Label>
+              <Textarea
+                id="disputeComment"
+                value={disputeComment}
+                onChange={(e) => setDisputeComment(e.target.value)}
+                placeholder={t('report.disputePlaceholder')}
+                rows={3}
+              />
+              {actionError && (
+                <p className="text-xs text-destructive">{actionError}</p>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (!disputeComment.trim()) {
+                      setActionError(t('report.disputeCommentRequired'))
+                      return
+                    }
+                    disputeReport.mutate(
+                      { id: report.id, comment: disputeComment.trim() },
+                      {
+                        onSuccess: () => {
+                          setShowDisputeForm(false)
+                          setDisputeComment('')
+                        },
+                        onError: (err) => {
+                          setActionError(
+                            err instanceof ApiError
+                              ? err.message
+                              : t('moderation.actionError')
+                          )
+                        },
+                      }
+                    )
+                  }}
+                  disabled={disputeReport.isPending}
+                >
+                  {t('report.disputeSubmit')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowDisputeForm(false)
+                    setDisputeComment('')
+                    setActionError(null)
+                  }}
+                >
+                  {t('common.cancel')}
+                </Button>
+              </div>
+            </div>
+          )}
+
           {isLeader && canDelete && (
             <Button
               size="sm"
@@ -387,39 +600,35 @@ function SubmittedValues({
   const config = rule.config as Record<string, unknown>
   const fieldDefs = getFieldDefs(rule.ruleType, config)
 
-  if (fieldDefs.length === 0) {
-    // Show raw data if no field defs
+  const formatValue = (value: unknown, field: FieldDef): string => {
+    if (field.type === 'select' && field.options) {
+      const strVal = value === true ? 'true' : value === false ? 'false' : String(value)
+      const opt = field.options.find((o) => o.value === strVal)
+      return opt ? t(opt.labelKey, opt.value) : strVal
+    }
+    return String(value)
+  }
+
+  const entries = fieldDefs
+    .map((field) => ({ field, value: data[field.key] }))
+    .filter(({ value }) => value != null && value !== '')
+
+  if (entries.length === 0) {
     return (
-      <div className="space-y-1">
-        {Object.entries(data).map(([key, value]) => (
-          <div key={key} className="flex justify-between text-xs">
-            <span className="text-muted-foreground">{key}</span>
-            <span className="font-medium">{String(value)}</span>
-          </div>
-        ))}
-      </div>
+      <p className="text-xs text-muted-foreground">
+        {t('report.noParams')}
+      </p>
     )
   }
 
   return (
     <div className="space-y-1">
-      {fieldDefs.map((field) => {
-        const value = data[field.key]
-        if (value == null || value === '') return null
-        let display: string
-        if (field.type === 'select' && field.options) {
-          const opt = field.options.find((o) => o.value === value)
-          display = opt ? t(opt.labelKey, opt.value) : String(value)
-        } else {
-          display = String(value)
-        }
-        return (
-          <div key={field.key} className="flex justify-between text-xs">
-            <span className="text-muted-foreground">{t(field.labelKey)}</span>
-            <span className="font-medium">{display}</span>
-          </div>
-        )
-      })}
+      {entries.map(({ field, value }) => (
+        <div key={field.key} className="flex justify-between text-xs">
+          <span className="text-muted-foreground">{t(field.labelKey)}</span>
+          <span className="font-medium">{formatValue(value, field)}</span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -437,10 +646,25 @@ function ParamEditor({
   const config = rule.config as Record<string, unknown>
 
   const setField = (key: string, value: unknown) => {
-    onChange({ ...values, [key]: value })
+    // Convert boolean select values to actual booleans
+    let processed = value
+    if (value === 'true') processed = true
+    if (value === 'false') processed = false
+    onChange({ ...values, [key]: processed })
   }
 
   const fieldDefs = getFieldDefs(rule.ruleType, config)
+
+  const getDisplayValue = (key: string, type: string): string => {
+    const val = values[key]
+    if (val == null) return ''
+    if (type === 'select') {
+      if (val === true) return 'true'
+      if (val === false) return 'false'
+      return String(val)
+    }
+    return String(val)
+  }
 
   return (
     <div className="space-y-2">
@@ -449,7 +673,7 @@ function ParamEditor({
           <Label className="text-xs">{t(field.labelKey)}</Label>
           {field.type === 'select' ? (
             <select
-              value={(values[field.key] as string) ?? ''}
+              value={getDisplayValue(field.key, field.type)}
               onChange={(e) => setField(field.key, e.target.value)}
               className="mt-1 flex h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm"
             >
@@ -463,8 +687,8 @@ function ParamEditor({
           ) : (
             <Input
               type="number"
-              value={(values[field.key] as number) ?? ''}
-              onChange={(e) => setField(field.key, Number(e.target.value))}
+              value={getDisplayValue(field.key, field.type)}
+              onChange={(e) => setField(field.key, e.target.value === '' ? undefined : Number(e.target.value))}
               min={field.min}
               className="mt-1 h-8"
             />
@@ -536,15 +760,16 @@ function getFieldDefs(
         },
       ]
     }
-    case 'discretionary':
+    case 'discretionary': {
       return [
         {
           key: (config.points_field as string) ?? 'points',
-          labelKey: 'report.fields.points',
+          labelKey: 'report.fields.pointsSimple',
           type: 'number',
           min: (config.min as number) ?? 0,
         },
       ]
+    }
     case 'per_person_per_month': {
       const hasTrainers = config.per_trainer_per_month != null
       return [
@@ -568,7 +793,89 @@ function getFieldDefs(
           type: 'number',
           min: 1,
         },
+        {
+          key: (config.cross_type_field as string) ?? 'cross_type',
+          labelKey: 'report.fields.crossType',
+          type: 'select',
+          options: [
+            { value: 'true', labelKey: 'common.yes' },
+            { value: 'false', labelKey: 'common.no' },
+          ],
+        },
       ]
+    case 'fixed_monthly_with_per_unit':
+      return [
+        {
+          key: (config.extra_field as string) ?? 'extra_socials',
+          labelKey: 'report.fields.extraSocials',
+          type: 'number',
+          min: 0,
+        },
+      ]
+    case 'fixed_per_event_with_monthly_cap':
+      return []
+    case 'scale_with_conditional_bonus':
+      return [
+        {
+          key: (config.level_field as string) ?? 'level',
+          labelKey: 'report.fields.level',
+          type: 'select',
+          options: Object.keys(levels).map((k) => ({
+            value: k,
+            labelKey: `report.levels.${k}`,
+          })),
+        },
+        {
+          key: (config.focus_field as string) ?? 'full_club_focus',
+          labelKey: 'report.fields.fullClubFocus',
+          type: 'select',
+          options: [
+            { value: 'true', labelKey: 'common.yes' },
+            { value: 'false', labelKey: 'common.no' },
+          ],
+        },
+      ]
+    case 'scale_split_mode':
+    case 'scale_with_conditional_modifier': {
+      const modeField = (config.mode_field as string) ?? 'mode'
+      const levelField = (config.level_field as string) ?? 'level'
+      // Levels depend on mode — show individual levels as options
+      const individualLevels = (config.individual as Record<string, number>) ?? {}
+      const teamLevels = (config.team as Record<string, number>) ?? {}
+      const allLevelKeys = [...new Set([...Object.keys(individualLevels), ...Object.keys(teamLevels)])]
+      const fields: FieldDef[] = [
+        {
+          key: modeField,
+          labelKey: 'report.fields.mode',
+          type: 'select',
+          options: [
+            { value: 'individual', labelKey: 'report.modes.individual' },
+            { value: 'team', labelKey: 'report.modes.team' },
+          ],
+        },
+        {
+          key: levelField,
+          labelKey: 'report.fields.level',
+          type: 'select',
+          options: allLevelKeys.map((k) => ({
+            value: k,
+            labelKey: `report.levels.${k}`,
+          })),
+        },
+      ]
+      if (ruleType === 'scale_with_conditional_modifier') {
+        fields.push({
+          key: (config.is_host_field as string) ?? 'is_host',
+          labelKey: 'report.fields.isHost',
+          type: 'select',
+          options: [
+            { value: 'true', labelKey: 'common.yes' },
+            { value: 'false', labelKey: 'common.no' },
+          ],
+        })
+      }
+      return fields
+    }
     default:
       return []
   }

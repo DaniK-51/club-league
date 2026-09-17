@@ -182,6 +182,16 @@ class ApiClient {
     })
   }
 
+  async setCalculation(
+    id: string,
+    dto: { method: 'auto' | 'manual'; manualPoints?: number }
+  ): Promise<ReportResponse> {
+    return this.request<ReportResponse>(`/api/reports/${id}/calculation`, {
+      method: 'PATCH',
+      body: JSON.stringify(dto),
+    })
+  }
+
   async disputeReport(id: string, comment: string): Promise<ReportResponse> {
     return this.request<ReportResponse>(`/api/reports/${id}/dispute`, {
       method: 'POST',

@@ -11,7 +11,7 @@ import { useAuthStore } from '@/store/auth.store'
 
 export function ReportDetail() {
   const { id } = useParams<{ id: string }>()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
 
@@ -24,6 +24,11 @@ export function ReportDetail() {
   // Find the rule for this report's criteria
   const criteria = criteriaList?.find((c) => c.code === report?.criteriaCode)
   const rule = criteria?.rules?.[0]
+  const criteriaName = criteria
+    ? i18n.language === 'ru'
+      ? criteria.nameRu
+      : criteria.nameEn
+    : undefined
 
   if (isLoading) {
     return <p className="text-muted-foreground">{t('common.loading')}</p>
@@ -95,6 +100,7 @@ export function ReportDetail() {
           <ReportSidebar
             report={report}
             rule={rule}
+            criteriaName={criteriaName}
             onNavigateBack={() => navigate(backPath)}
           />
         </div>

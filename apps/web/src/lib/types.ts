@@ -52,6 +52,8 @@ export interface ReportResponse {
   status: ReportStatus
   calculatedPoints: number | null
   finalPoints: number | null
+  calculationMethod: 'auto' | 'manual'
+  manualPoints: number | null
   links: ReportLink[]
   reportData: Record<string, unknown>
 }
