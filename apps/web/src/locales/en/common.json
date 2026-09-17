@@ -4,6 +4,12 @@
     "login": "Login with SSO",
     "logout": "Logout"
   },
+  "auth": {
+    "loginSubtitle": "Sign in with university SSO",
+    "loggingIn": "Signing in…",
+    "loginFailed": "Login failed",
+    "tryAgain": "Try again"
+  },
   "nav": {
     "rating": "Rating",
     "reports": "My Reports",
@@ -30,12 +36,18 @@
       "ARCHIVED": "Archived"
     }
   },
+  "reports": {
+    "welcome": "Welcome, {{name}}",
+    "comingSoon": "Your reports will appear here."
+  },
   "rating": {
     "title": "Club Rating",
     "club": "Club",
     "points": "Points",
     "semester": "Semester",
-    "category": "Category"
+    "category": "Category",
+    "publicView": "Public club rating",
+    "comingSoon": "Rating table will appear here."
   },
   "moderation": {
     "approve": "Approve",
@@ -43,6 +55,7 @@
     "requestChanges": "Request Changes",
     "comment": "Comment",
     "commentRequired": "Comment is required",
-    "finalPoints": "Final Points"
+    "finalPoints": "Final Points",
+    "comingSoon": "Moderation queue will appear here."
   }
 }

@@ -1,122 +1,235 @@
-// Types re-exported from docs/shared/api-contract.ts
-export type ReportStatus =
-  | 'DRAFT'
-  | 'ON_MODERATION'
-  | 'CHANGES_REQUIRED'
-  | 'APPROVED'
-  | 'DISPUTED'
-  | 'COMPLETED'
-  | 'CLOSED'
-  | 'ARCHIVED'
+import type {
+  ApiSuccess,
+  CommentEntry,
+  CreateReportDTO,
+  CriteriaOut,
+  LoginResponse,
+  MeResponse,
+  ModerateReportDTO,
+  RatingResponse,
+  ReportResponse,
+  SudoActionDTO,
+} from './types'
+import { ApiError } from './types'
 
-export interface CreateReportDTO {
-  criteriaId: string
-  activityDate: string
-  reportData: Record<string, unknown>
-  links: string[]
-}
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
-export interface ModerateReportDTO {
-  status: 'APPROVED' | 'CHANGES_REQUIRED' | 'CLOSED'
-  finalPoints?: number
-  comment: string
-}
-
-export interface ReportResponse {
-  id: string
-  clubName: string
-  criteriaCode: string
-  activityDate: string
-  isOverdue: boolean
-  status: ReportStatus
-  calculatedPoints: number | null
-  finalPoints: number | null
-  links: { url: string; domain: string }[]
-}
-
-export interface MeResponse {
-  id: string
-  email: string
-  name: string
-  role: 'CLUB_LEADER' | 'MODERATOR' | 'GUEST'
-  canSudo: boolean
-  clubIds: string[]
-}
-
-export interface LoginResponse {
-  accessToken: string
-  refreshToken: string
-  user: MeResponse
-}
-
-export interface ApiSuccess<T> {
-  data: T
-}
-
-export interface ApiError {
-  error: {
-    code: string
-    message: string
-  }
-}
-
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+type TokenListener = (accessToken: string | null) => void
 
 class ApiClient {
   private accessToken: string | null = null
+  private refreshToken: string | null = null
+  private refreshPromise: Promise<boolean> | null = null
+  private onTokenChange: TokenListener | null = null
 
-  setToken(token: string | null) {
-    this.accessToken = token
+  setTokens(access: string | null, refresh: string | null) {
+    this.accessToken = access
+    this.refreshToken = refresh
+    this.onTokenChange?.(access)
+  }
+
+  setOnTokenChange(listener: TokenListener) {
+    this.onTokenChange = listener
+  }
+
+  getAccessToken() {
+    return this.accessToken
+  }
+
+  private async tryRefresh(): Promise<boolean> {
+    if (!this.refreshToken) return false
+    if (this.refreshPromise) return this.refreshPromise
+
+    this.refreshPromise = (async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken: this.refreshToken }),
+        })
+        if (!res.ok) return false
+        const json = (await res.json()) as ApiSuccess<LoginResponse>
+        this.setTokens(json.data.accessToken, json.data.refreshToken)
+        return true
+      } catch {
+        return false
+      } finally {
+        this.refreshPromise = null
+      }
+    })()
+
+    return this.refreshPromise
   }
 
   private async request<T>(
     path: string,
-    options: RequestInit = {}
-  ): Promise<ApiSuccess<T>> {
+    options: RequestInit = {},
+    retryOn401 = true
+  ): Promise<T> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       ...((options.headers as Record<string, string>) ?? {}),
     }
-
+    if (options.body !== undefined) {
+      headers['Content-Type'] = 'application/json'
+    }
     if (this.accessToken) {
       headers['Authorization'] = `Bearer ${this.accessToken}`
     }
 
-    const res = await fetch(`${BASE_URL}${path}`, {
-      ...options,
-      headers,
-    })
+    const res = await fetch(`${BASE_URL}${path}`, { ...options, headers })
+    const json = await res.json().catch(() => null)
 
-    const json = await res.json()
-
-    if (!res.ok) {
-      const err = json as ApiError
-      throw new Error(err.error?.message || 'API error')
+    if (res.status === 401 && retryOn401) {
+      const refreshed = await this.tryRefresh()
+      if (refreshed) {
+        return this.request<T>(path, options, false)
+      }
+      this.setTokens(null, null)
     }
 
-    return json as ApiSuccess<T>
+    if (!res.ok) {
+      const err = json as { error?: { code?: string; message?: string } } | null
+      throw new ApiError(
+        err?.error?.code ?? 'INTERNAL_SERVER_ERROR',
+        err?.error?.message ?? `HTTP ${res.status}`,
+        res.status
+      )
+    }
+
+    return (json as ApiSuccess<T>).data
   }
 
-  get<T>(path: string) {
-    return this.request<T>(path)
-  }
+  // === Auth ===
 
-  post<T>(path: string, body?: unknown) {
-    return this.request<T>(path, {
+  async ssoCallback(code: string): Promise<LoginResponse> {
+    return this.request<LoginResponse>('/api/auth/sso/callback', {
       method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
+      body: JSON.stringify({ code }),
     })
   }
 
-  patch<T>(path: string, body?: unknown) {
-    return this.request<T>(path, {
+  async refreshTokens(): Promise<LoginResponse> {
+    return this.request<LoginResponse>('/api/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken: this.refreshToken }),
+    })
+  }
+
+  async getMe(): Promise<MeResponse> {
+    return this.request<MeResponse>('/api/users/me')
+  }
+
+  // === Criteria ===
+
+  async getCriteria(semester?: string, category?: string): Promise<CriteriaOut[]> {
+    const params = new URLSearchParams()
+    if (semester) params.set('semester', semester)
+    if (category) params.set('category', category)
+    const qs = params.toString()
+    return this.request<CriteriaOut[]>(`/api/criteria${qs ? `?${qs}` : ''}`)
+  }
+
+  // === Reports ===
+
+  async createReport(dto: CreateReportDTO): Promise<ReportResponse> {
+    return this.request<ReportResponse>('/api/reports', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    })
+  }
+
+  async getReports(): Promise<ReportResponse[]> {
+    return this.request<ReportResponse[]>('/api/reports')
+  }
+
+  async getReport(id: string): Promise<ReportResponse> {
+    return this.request<ReportResponse>(`/api/reports/${id}`)
+  }
+
+  async updateReport(
+    id: string,
+    dto: Partial<CreateReportDTO>
+  ): Promise<ReportResponse> {
+    return this.request<ReportResponse>(`/api/reports/${id}`, {
       method: 'PATCH',
-      body: body ? JSON.stringify(body) : undefined,
+      body: JSON.stringify(dto),
     })
   }
 
-  delete<T>(path: string) {
-    return this.request<T>(path, { method: 'DELETE' })
+  async submitReport(id: string): Promise<ReportResponse> {
+    return this.request<ReportResponse>(`/api/reports/${id}/submit`, {
+      method: 'POST',
+    })
+  }
+
+  async deleteReport(id: string): Promise<void> {
+    await this.request<void>(`/api/reports/${id}`, { method: 'DELETE' })
+  }
+
+  async getReportComments(id: string): Promise<CommentEntry[]> {
+    return this.request<CommentEntry[]>(`/api/reports/${id}/comments`)
+  }
+
+  // === Moderation ===
+
+  async moderateReport(
+    id: string,
+    dto: ModerateReportDTO
+  ): Promise<ReportResponse> {
+    return this.request<ReportResponse>(`/api/reports/${id}/moderate`, {
+      method: 'PATCH',
+      body: JSON.stringify(dto),
+    })
+  }
+
+  async disputeReport(id: string, comment: string): Promise<ReportResponse> {
+    return this.request<ReportResponse>(`/api/reports/${id}/dispute`, {
+      method: 'POST',
+      body: JSON.stringify({ comment }),
+    })
+  }
+
+  async completeReport(id: string): Promise<ReportResponse> {
+    return this.request<ReportResponse>(`/api/reports/${id}/complete`, {
+      method: 'POST',
+    })
+  }
+
+  async archiveReports(period: string): Promise<{ archived: number }> {
+    return this.request<{ archived: number }>(
+      `/api/reports/archive?period=${encodeURIComponent(period)}`,
+      { method: 'POST' }
+    )
+  }
+
+  // === Rating ===
+
+  async getRating(semester?: string): Promise<RatingResponse> {
+    const qs = semester ? `?semester=${encodeURIComponent(semester)}` : ''
+    return this.request<RatingResponse>(`/api/rating${qs}`)
+  }
+
+  // === Admin ===
+
+  async forceSync(semester?: string): Promise<{ status: string }> {
+    return this.request<{ status: string }>('/api/admin/sync/force', {
+      method: 'POST',
+      body: JSON.stringify(semester ? { semester } : {}),
+    })
+  }
+
+  async getSyncStatus(): Promise<{
+    lastSyncAt: string | null
+    status: string
+  }> {
+    return this.request('/api/admin/sync/status')
+  }
+
+  async sudo(dto: SudoActionDTO): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>('/api/admin/sudo', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    })
   }
 }
 

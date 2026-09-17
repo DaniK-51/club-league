@@ -1,29 +1,68 @@
-import { Routes, Route } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useEffect } from 'react'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { useAuthStore } from '@/store/auth.store'
+import { AppLayout } from '@/components/layout/app-layout'
+import LoginPage from '@/app/auth/login'
+import AuthCallbackPage from '@/app/auth/callback'
+import RatingPage from '@/app/public/rating'
+import ReportsPage from '@/app/leader/reports'
+import ModerationPage from '@/app/moderator/moderation'
 
-function HomePage() {
-  const { t, i18n } = useTranslation()
+function RequireAuth({
+  children,
+  roles,
+}: {
+  children: React.ReactNode
+  roles?: string[]
+}) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const user = useAuthStore((s) => s.user)
 
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold">{t('app.name')}</h1>
-        <p className="mt-2 text-muted-foreground">Frontend scaffold ready</p>
-        <button
-          onClick={() => i18n.changeLanguage(i18n.language === 'ru' ? 'en' : 'ru')}
-          className="mt-4 rounded-md bg-primary px-4 py-2 text-primary-foreground"
-        >
-          {i18n.language === 'ru' ? 'EN' : 'RU'}
-        </button>
-      </div>
-    </div>
-  )
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+  if (roles && user && !roles.includes(user.role)) {
+    return <Navigate to="/rating" replace />
+  }
+  return <>{children}</>
 }
 
 export default function App() {
+  const init = useAuthStore((s) => s.init)
+
+  useEffect(() => {
+    init()
+  }, [init])
+
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<Navigate to="/rating" replace />} />
+        <Route path="/rating" element={<RatingPage />} />
+
+        <Route
+          path="/reports"
+          element={
+            <RequireAuth roles={['CLUB_LEADER', 'MODERATOR']}>
+              <ReportsPage />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/moderation"
+          element={
+            <RequireAuth roles={['MODERATOR']}>
+              <ModerationPage />
+            </RequireAuth>
+          }
+        />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/rating" replace />} />
     </Routes>
   )
 }

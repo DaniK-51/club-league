@@ -4,6 +4,12 @@
     "login": "Войти через SSO",
     "logout": "Выйти"
   },
+  "auth": {
+    "loginSubtitle": "Войдите через университетский SSO",
+    "loggingIn": "Выполняется вход…",
+    "loginFailed": "Не удалось войти",
+    "tryAgain": "Попробовать снова"
+  },
   "nav": {
     "rating": "Рейтинг",
     "reports": "Мои отчёты",
@@ -30,12 +36,18 @@
       "ARCHIVED": "В архиве"
     }
   },
+  "reports": {
+    "welcome": "Добро пожаловать, {{name}}",
+    "comingSoon": "Список отчётов появится здесь."
+  },
   "rating": {
     "title": "Рейтинг клубов",
     "club": "Клуб",
     "points": "Баллы",
     "semester": "Семестр",
-    "category": "Категория"
+    "category": "Категория",
+    "publicView": "Публичный рейтинг клубов",
+    "comingSoon": "Таблица рейтинга появится здесь."
   },
   "moderation": {
     "approve": "Одобрить",
@@ -43,6 +55,7 @@
     "requestChanges": "Требуются правки",
     "comment": "Комментарий",
     "commentRequired": "Комментарий обязателен",
-    "finalPoints": "Итоговые баллы"
+    "finalPoints": "Итоговые баллы",
+    "comingSoon": "Очередь модерации появится здесь."
   }
 }
