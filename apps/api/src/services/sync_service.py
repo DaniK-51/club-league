@@ -118,9 +118,10 @@ async def compute_rating(
     semester: str | None = None,
     period_name: str | None = None,
 ) -> list[ClubTotal]:
-    """COMPLETED reports for period/semester; monthly caps per month; then G1 from DB.
+    """COMPLETED + ARCHIVED reports for period/semester; monthly caps; then G1.
 
     Priority: period_name (Period table) > semester (Period table) > current period.
+    ARCHIVED is included so historical ratings stay stable after period archive.
     """
     from src.models.entities import Period
     from src.services.period_service import get_current_period, get_period_by_name
@@ -149,7 +150,7 @@ async def compute_rating(
         select(Report)
         .options(selectinload(Report.club), selectinload(Report.criteria))
         .where(
-            Report.status == ReportStatus.COMPLETED,
+            Report.status.in_([ReportStatus.COMPLETED, ReportStatus.ARCHIVED]),
             Report.is_deleted.is_(False),
         )
     )

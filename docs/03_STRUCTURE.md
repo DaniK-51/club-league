@@ -25,7 +25,7 @@ apps/api/
         reports.py              # CRUD, submit, calculation, comments
         moderation.py           # moderate, dispute, complete, archive
         admin.py                # sudo, sync force/status, rules CRUD, audit list, periods CRUD
-        rating.py               # GET /rating (public)
+        rating.py               # GET /rating (public), GET /periods (public filter)
     core/
       config.py                 # Settings (env), domain whitelist, pool, rate-limit
       database.py               # Async engine/session (NullPool-safe)
@@ -67,7 +67,7 @@ apps/api/
       criteria_service.py       # Criteria list + admin rules CRUD
       link_validation.py        # Whitelist domain validation
       periods.py                # Semester → date range fallback (Europe/Moscow)
-      period_service.py         # Period CRUD + resolve by activity_date
+      period_service.py         # Period CRUD, public list, resolve by activity_date
       sudo_service.py           # force_status / restore_deleted / override_points
       violations_service.py     # access_violations logger
     policies/

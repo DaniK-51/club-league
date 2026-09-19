@@ -222,6 +222,7 @@ export interface ApiError { error: { code: string; message: string } }
 // POST   /api/reports/:id/comments     -> CreateCommentDTO -> CommentEntry (leader/moderator)
 // POST   /api/reports/archive?period=  -> ArchivePeriodResponse (модератор; Period table only)
 // GET    /api/rating?period=&semester=  -> { clubs: RatingClub[] } (period приоритетнее)
+// GET    /api/periods                   -> PeriodOut[] (public; active + archived)
 // POST   /api/admin/sync/force         -> { semester?: string } -> { status: 'queued' } (Только модератор)
 // GET    /api/admin/sync/status        -> SyncStatus
 // POST   /api/admin/sudo               -> SudoActionDTO -> { success: true } (Только модератор с can_sudo)
@@ -301,12 +302,14 @@ export enum ErrorCode {
  * - Period — сущность в БД (name, startDate, endDate, isArchived).
  * - Report привязывается к Period по activity_date при create/update (start <= date < end).
  * - ReportResponse.periodName — имя периода или null (вне всех периодов).
+ * - GET /api/periods — public (no auth): all periods incl. isArchived, for rating filter.
  * - GET /api/admin/periods — moderator only; delete only when reportCount=0.
  * - GET /api/rating?period=<name>:
  *     1) Period table by name
  *     2) else semester_range() fallback ("YYYY-fall|spring|summer")
- *     3) else no date filter (all COMPLETED reports)
+ *     3) else no date filter (all COMPLETED+ARCHIVED reports)
  *   Without params → last non-archived Period by startDate; if none → current_semester fallback.
+ *   Rating statuses: COMPLETED + ARCHIVED (archived period totals stay stable after archive).
  * - POST /api/reports/archive?period=<name>:
  *     Period table ONLY (no semester fallback).
  *     404 PERIOD_NOT_FOUND if missing; 400 ALREADY_ARCHIVED if already archived.

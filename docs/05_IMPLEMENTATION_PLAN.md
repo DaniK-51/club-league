@@ -13,6 +13,7 @@
 - [x] **Шаг 10 (frontend requests):** Calculation method — `PATCH /api/reports/:id/calculation` (auto/manual + manualPoints + reason).
 - [x] **Шаг 11 (frontend requests):** Audit `display_data` JSONB + enrichment (camelCase keys for frontend).
 - [x] **Шаг 12 (frontend requests):** Periods — entity + CRUD `/admin/periods`, assignment by `activity_date`, `periodName`, rating/archive by Period; approve без comment при `calculation_method=manual`.
+- [x] **Шаг 13 (frontend requests):** Public `GET /api/periods` (без auth, active+archived) + rating считает COMPLETED+ARCHIVED (архивный период не пустеет).
 
 ### Known backend gaps (not blockers for MVP)
 - Rate limiter in-memory (not multi-instance).

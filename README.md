@@ -99,8 +99,9 @@ cd apps/mock-sso && uv run pytest
 
 ## 📅 Расчётные периоды
 - Сущность `periods`: CRUD через `/api/admin/periods` (модератор).
+- Публичный список (включая archived): `GET /api/periods`.
 - Отчёты привязываются по `activity_date`; `ReportResponse.periodName`.
-- Рейтинг: `GET /api/rating?period=2026-fall`; архивация: `POST /api/reports/archive?period=...`.
+- Рейтинг: `GET /api/rating?period=2026-fall` (COMPLETED + ARCHIVED); архивация: `POST /api/reports/archive?period=...`.
 - Approve при `calculation_method=manual` не требует comment.
 
 ## 📊 Yandex Disk WebDAV (rating file mirror)

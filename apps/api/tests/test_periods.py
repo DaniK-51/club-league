@@ -446,3 +446,72 @@ async def test_archive_unknown_period(client: AsyncClient, env: dict[str, str]) 
     )
     assert resp.status_code == 404
     assert resp.json()["error"]["code"] == "PERIOD_NOT_FOUND"
+
+
+# ─── Public periods + rating after archive ──────────────────────────────────
+
+
+async def test_public_periods_no_auth(client: AsyncClient, env: dict[str, str]) -> None:
+    factory = get_session_factory()
+    async with factory() as session:
+        now = datetime.now(UTC)
+        session.add(
+            Period(
+                name="2025-fall",
+                start_date=datetime(2025, 9, 1, tzinfo=TZ),
+                end_date=datetime(2026, 1, 1, tzinfo=TZ),
+                is_archived=True,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        await session.commit()
+
+    # No Authorization header
+    resp = await client.get("/api/periods")
+    assert resp.status_code == 200, resp.text
+    items = resp.json()["data"]
+    names = {p["name"] for p in items}
+    assert "2026-fall" in names
+    assert "2025-fall" in names
+    archived = next(p for p in items if p["name"] == "2025-fall")
+    assert archived["isArchived"] is True
+    active = next(p for p in items if p["name"] == "2026-fall")
+    assert active["isArchived"] is False
+
+    # Admin endpoint still requires moderator
+    resp = await client.get("/api/admin/periods")
+    assert resp.status_code == 401
+
+
+async def test_rating_stable_after_archive(client: AsyncClient, env: dict[str, str]) -> None:
+    await _insert_completed_report(
+        env,
+        activity_date=datetime(2026, 9, 10, 12, 0, tzinfo=TZ),
+        final_points=400,
+    )
+
+    before = await client.get("/api/rating", params={"period": "2026-fall"})
+    assert before.status_code == 200
+    before_clubs = before.json()["data"]["clubs"]
+    assert len(before_clubs) == 1
+    assert before_clubs[0]["totalPoints"] == 400
+
+    archive = await client.post(
+        "/api/reports/archive",
+        headers=_auth(env["mod"]),
+        params={"period": "2026-fall"},
+    )
+    assert archive.status_code == 200, archive.text
+
+    after = await client.get("/api/rating", params={"period": "2026-fall"})
+    assert after.status_code == 200
+    after_clubs = after.json()["data"]["clubs"]
+    assert len(after_clubs) == 1
+    assert after_clubs[0]["totalPoints"] == 400
+    assert after_clubs[0]["name"] == before_clubs[0]["name"]
+
+    # Public periods list shows archived flag
+    periods = await client.get("/api/periods")
+    fall = next(p for p in periods.json()["data"] if p["name"] == "2026-fall")
+    assert fall["isArchived"] is True

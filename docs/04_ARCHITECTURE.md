@@ -59,7 +59,8 @@ sequenceDiagram
 
 - **Source of truth:** таблица `periods` (`name` unique, `startDate`, `endDate`, `isArchived`).
 - **Report → Period:** при create/update по `activity_date` (`start <= date < end`); `ReportResponse.periodName`.
-- **Rating:** `GET /api/rating?period=<name>`; без параметра — последний неархивированный Period; fallback — `semester_range()`.
+- **Rating:** `GET /api/rating?period=<name>`; без параметра — последний неархивированный Period; fallback — `semester_range()`. Статусы: **COMPLETED + ARCHIVED** (история не пропадает после archive).
+- **Public periods:** `GET /api/periods` — без auth, active + archived (фильтр на странице рейтинга).
 - **Archive:** `POST /api/reports/archive?period=<name>` — только Period table; после batch `Period.isArchived=true`.
 - **Admin CRUD:** `GET/POST/PATCH/DELETE /api/admin/periods` (moderator). Delete запрещён, если есть отчёты.
 - **Approve + manual points:** comment не обязателен (`calculation_method=manual`).

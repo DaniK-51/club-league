@@ -49,6 +49,12 @@ async def list_periods(session: AsyncSession, *, user: User) -> list[PeriodOut]:
     return [await _period_out(session, p) for p in result.scalars().all()]
 
 
+async def list_periods_public(session: AsyncSession) -> list[PeriodOut]:
+    """All periods (active + archived) for the public rating filter. No auth."""
+    result = await session.execute(select(Period).order_by(Period.start_date.desc()))
+    return [await _period_out(session, p) for p in result.scalars().all()]
+
+
 async def create_period(
     session: AsyncSession, *, user: User, payload: CreatePeriodDTO
 ) -> PeriodOut:
