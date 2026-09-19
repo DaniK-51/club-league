@@ -196,6 +196,13 @@ function renderSystemEvent(
   const str = (v: unknown): string | null =>
     v != null && v !== '' ? String(v) : null
 
+  // Get field by camelCase or snake_case (backend migrated mid-flight)
+  const get = (camelKey: string, snakeKey?: string): unknown => {
+    if (dd[camelKey] !== undefined) return dd[camelKey]
+    if (snakeKey && dd[snakeKey] !== undefined) return dd[snakeKey]
+    return undefined
+  }
+
   const statusLabel = (v: unknown): string | null => {
     const s = str(v)
     return s ? t(`report.status.${s}`, s) : null
@@ -221,9 +228,9 @@ function renderSystemEvent(
 
   switch (action) {
     case 'created': {
-      const pts = points(dd.calculatedPoints)
-      const params = formatParams(dd.reportData)
-      const links = dd.links
+      const pts = points(get('calculatedPoints', 'calculated_points'))
+      const params = formatParams(get('reportData', 'report_data'))
+      const links = get('links')
       const linkList = Array.isArray(links)
         ? links
             .map((l) => (l && typeof l === 'object' && 'domain' in l ? String(l.domain) : null))
@@ -238,59 +245,59 @@ function renderSystemEvent(
     }
 
     case 'status_changed': {
-      const oldS = statusLabel(dd.oldStatus)
-      const newS = statusLabel(dd.newStatus)
+      const oldS = statusLabel(get('oldStatus', 'old_status'))
+      const newS = statusLabel(get('newStatus', 'new_status'))
       const statusPart = oldS && newS ? `${oldS} → ${newS}` : null
       const caption = statusPart
         ? `${actionLabel} — ${statusPart}`
         : actionLabel
-      const calcPts = points(dd.calculatedPoints)
+      const calcPts = points(get('calculatedPoints', 'calculated_points'))
       if (calcPts) details.push({ label: t('moderation.calculated'), value: calcPts })
-      const finPts = points(dd.finalPoints)
+      const finPts = points(get('finalPoints', 'final_points'))
       if (finPts) details.push({ label: t('moderation.final'), value: finPts })
-      const method = methodLabel(dd.calculationMethod)
-      const manualPts = points(dd.manualPoints)
+      const method = methodLabel(get('calculationMethod', 'calculation_method'))
+      const manualPts = points(get('manualPoints', 'manual_points'))
       if (method === t('moderation.calcModes.manual') && manualPts) {
         details.push({ label: t('moderation.manualPoints'), value: manualPts })
       }
-      const modComment = str(dd.moderationComment)
+      const modComment = str(get('moderationComment', 'moderation_comment'))
       if (modComment) details.push({ label: t('moderation.reasonLabel'), value: modComment })
       return { caption, details }
     }
 
     case 'points_updated': {
-      const oldP = str(dd.oldPoints) ?? '—'
-      const newP = str(dd.newPoints) ?? '—'
+      const oldP = str(get('oldPoints', 'old_points')) ?? '—'
+      const newP = str(get('newPoints', 'new_points')) ?? '—'
       const caption = `${actionLabel} — ${oldP} → ${newP} ${t('report.pointsUnit')}`
-      const method = methodLabel(dd.calculationMethod)
+      const method = methodLabel(get('calculationMethod', 'calculation_method'))
       if (method) details.push({ label: t('moderation.calcMethod'), value: method })
-      const modComment = str(dd.moderationComment)
+      const modComment = str(get('moderationComment', 'moderation_comment'))
       if (modComment) details.push({ label: t('moderation.reasonLabel'), value: modComment })
       return { caption, details }
     }
 
     case 'calculation_updated': {
-      const oldM = methodLabel(dd.oldMethod)
-      const newM = methodLabel(dd.newMethod)
+      const oldM = methodLabel(get('oldMethod', 'old_method'))
+      const newM = methodLabel(get('newMethod', 'new_method'))
       const methodPart = oldM && newM ? `${oldM} → ${newM}` : newM ?? oldM
-      const manualPts = points(dd.manualPoints)
+      const manualPts = points(get('manualPoints', 'manual_points'))
       const caption = methodPart
         ? `${actionLabel} — ${methodPart}${manualPts ? ` (${manualPts})` : ''}`
         : actionLabel
-      const reason = str(dd.reason)
+      const reason = str(get('reason'))
       if (reason) details.push({ label: t('moderation.reasonLabel'), value: reason })
       return { caption, details }
     }
 
     case 'updated': {
-      const oldPts = str(dd.oldCalculatedPoints)
-      const newPts = str(dd.newCalculatedPoints)
+      const oldPts = str(get('oldCalculatedPoints', 'old_calculated_points'))
+      const newPts = str(get('newCalculatedPoints', 'new_calculated_points'))
       const ptsPart = oldPts && newPts ? `${oldPts} → ${newPts}` : null
       const caption = ptsPart
         ? `${actionLabel} — ${t('report.points')}: ${ptsPart}`
         : actionLabel
       // Show changes from backend: [{ field, old, new }]
-      const changes = dd.changes
+      const changes = get('changes')
       if (Array.isArray(changes)) {
         for (const change of changes) {
           if (!change || typeof change !== 'object') continue
@@ -298,7 +305,7 @@ function renderSystemEvent(
           const oldVal = 'old' in change ? change.old : null
           const newVal = 'new' in change ? change.new : null
 
-          if (field === 'reportData') {
+          if (field === 'reportData' || field === 'report_data') {
             const oldP = formatParams(oldVal)
             const newP = formatParams(newVal)
             if (oldP) details.push({ label: `${t('report.parameters')} (${t('common.old', 'было')})`, value: oldP })
@@ -312,7 +319,7 @@ function renderSystemEvent(
               : null
             if (oldLinks) details.push({ label: `${t('report.links')} (${t('common.old', 'было')})`, value: oldLinks })
             if (newLinks) details.push({ label: `${t('report.links')} (${t('common.new', 'стало')})`, value: newLinks })
-          } else if (field === 'activityDate') {
+          } else if (field === 'activityDate' || field === 'activity_date') {
             if (oldVal) details.push({ label: `${t('report.activityDate')} (${t('common.old', 'было')})`, value: String(oldVal) })
             if (newVal) details.push({ label: `${t('report.activityDate')} (${t('common.new', 'стало')})`, value: String(newVal) })
           }
