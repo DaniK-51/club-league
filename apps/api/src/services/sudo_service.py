@@ -19,6 +19,7 @@ from src.policies.common import ensure_sudo
 from src.schemas.common import ErrorCode
 from src.schemas.sudo import SudoActionDTO
 from src.services.audit_service import AuditService
+from src.services.report_service import _criteria_context
 
 
 class SudoReportNotFoundError(Exception):
@@ -103,9 +104,14 @@ async def run_sudo_action(
         display_data = {
             "title": f"Sudo: {sudo_action}",
             "summary": f"{old_status.value} → {new_status.value}",
-            "sudo_action": sudo_action,
-            "old_status": old_status.value,
-            "new_status": new_status.value,
+            **_criteria_context(report),
+            "sudoAction": sudo_action,
+            "targetReportId": payload.targetReportId,
+            "oldStatus": old_status.value,
+            "newStatus": new_status.value,
+            "oldValue": old_snapshot,
+            "newValue": {"status": new_status.value},
+            "reason": reason,
         }
 
     elif payload.action == "restore_deleted":
@@ -126,7 +132,12 @@ async def run_sudo_action(
         display_data = {
             "title": f"Sudo: {sudo_action}",
             "summary": "Report restored",
-            "sudo_action": sudo_action,
+            **_criteria_context(report),
+            "sudoAction": sudo_action,
+            "targetReportId": payload.targetReportId,
+            "oldValue": old_snapshot,
+            "newValue": new_snapshot,
+            "reason": reason,
         }
 
     elif payload.action == "override_points":
@@ -143,8 +154,14 @@ async def run_sudo_action(
         display_data = {
             "title": f"Sudo: {sudo_action}",
             "summary": f"finalPoints set to {points}",
-            "sudo_action": sudo_action,
-            "new_points": points,
+            **_criteria_context(report),
+            "sudoAction": sudo_action,
+            "targetReportId": payload.targetReportId,
+            "oldPoints": report.calculated_points,
+            "newPoints": points,
+            "oldValue": old_snapshot,
+            "newValue": new_snapshot,
+            "reason": reason,
         }
 
     else:  # pragma: no cover - Literal prevents this

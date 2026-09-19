@@ -76,6 +76,7 @@ class SetCalculationDTO(BaseModel):
 
     method: Literal["auto", "manual"]
     manualPoints: int | None = Field(default=None, ge=0)
+    reason: str | None = Field(default=None, max_length=2000)
 
     @model_validator(mode="after")
     def _validate_manual(self) -> SetCalculationDTO:

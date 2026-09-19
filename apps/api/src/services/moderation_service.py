@@ -15,7 +15,12 @@ from src.policies.common import ensure_club_leader, ensure_moderator
 from src.schemas.common import ErrorCode
 from src.schemas.moderation import DisputeReportDTO, ModerateReportDTO
 from src.services.audit_service import AuditService
-from src.services.report_service import ReportNotFoundError, _get_report, _user_club_ids
+from src.services.report_service import (
+    ReportNotFoundError,
+    _criteria_context,
+    _get_report,
+    _user_club_ids,
+)
 from src.services.report_state import (
     ensure_leader_transition,
     ensure_moderator_transition,
@@ -125,9 +130,14 @@ async def moderate_report(
         display_data={
             "title": "Status changed",
             "summary": summary,
-            "old_status": old_status.value,
-            "new_status": report.status.value,
-            "final_points": report.final_points,
+            **_criteria_context(report),
+            "oldStatus": old_status.value,
+            "newStatus": report.status.value,
+            "calculatedPoints": report.calculated_points,
+            "finalPoints": report.final_points,
+            "calculationMethod": report.calculation_method or "auto",
+            "manualPoints": report.manual_points,
+            "moderationComment": comment or None,
         },
     )
     if payload.finalPoints is not None and payload.finalPoints != report.calculated_points:
@@ -142,8 +152,12 @@ async def moderate_report(
             display_data={
                 "title": "Points updated",
                 "summary": f"finalPoints: {report.calculated_points} → {report.final_points}",
-                "old_points": report.calculated_points,
-                "new_points": report.final_points,
+                **_criteria_context(report),
+                "oldPoints": report.calculated_points,
+                "newPoints": report.final_points,
+                "calculationMethod": report.calculation_method or "auto",
+                "manualPoints": report.manual_points,
+                "moderationComment": comment or None,
             },
             reason=comment or None,
         )
@@ -198,8 +212,11 @@ async def dispute_report(
         display_data={
             "title": "Status changed",
             "summary": summary,
-            "old_status": old_status.value,
-            "new_status": report.status.value,
+            **_criteria_context(report),
+            "oldStatus": old_status.value,
+            "newStatus": report.status.value,
+            "calculatedPoints": report.calculated_points,
+            "finalPoints": report.final_points,
         },
         reason=comment,
     )
@@ -241,8 +258,11 @@ async def complete_report(
         display_data={
             "title": "Status changed",
             "summary": f"{old_status.value} → {report.status.value}",
-            "old_status": old_status.value,
-            "new_status": report.status.value,
+            **_criteria_context(report),
+            "oldStatus": old_status.value,
+            "newStatus": report.status.value,
+            "calculatedPoints": report.calculated_points,
+            "finalPoints": report.final_points,
         },
     )
     await session.commit()

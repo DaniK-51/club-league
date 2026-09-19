@@ -100,6 +100,17 @@ def report_to_response(report: Report) -> ReportResponse:
     )
 
 
+def _criteria_context(report: Report) -> dict[str, Any]:
+    """Common context fields for display_data (criteria + activityDate)."""
+    criteria = report.criteria
+    return {
+        "criteriaCode": criteria.code if criteria else None,
+        "criteriaName": criteria.name_ru if criteria else None,
+        "criteriaNameEn": criteria.name_en if criteria else None,
+        "activityDate": report.activity_date.isoformat(),
+    }
+
+
 async def _get_report(session: AsyncSession, report_id: str) -> Report | None:
     return await session.scalar(
         select(Report)
@@ -199,10 +210,15 @@ async def create_report(
         },
         display_data={
             "title": "Report created",
-            "summary": "Draft created",
-            "status": report.status.value,
-            "calculated_points": points,
-            "is_overdue": is_overdue(activity_date),
+            "summary": f"{criteria.code} — {criteria.name_ru}",
+            "criteriaCode": criteria.code,
+            "criteriaName": criteria.name_ru,
+            "criteriaNameEn": criteria.name_en,
+            "activityDate": activity_date.isoformat(),
+            "reportData": dict(payload.reportData),
+            "links": [{"url": url, "domain": domain} for url, domain in validated_links],
+            "calculatedPoints": points,
+            "isOverdue": is_overdue(activity_date),
         },
     )
     await session.commit()
@@ -300,6 +316,28 @@ async def update_report(
     report.updated_at = _now()
     await session.flush()
 
+    # Build diff of what changed
+    changes: list[dict[str, Any]] = []
+    if payload.reportData is not None:
+        changes.append({
+            "field": "reportData",
+            "old": old_snapshot.get("report_data"),
+            "new": dict(report.report_data or {}),
+        })
+    if payload.links is not None:
+        new_links = [link.url for link in report.links]
+        changes.append({
+            "field": "links",
+            "old": old_snapshot.get("links"),
+            "new": new_links,
+        })
+    if payload.activityDate is not None:
+        changes.append({
+            "field": "activityDate",
+            "old": old_snapshot.get("activity_date"),
+            "new": report.activity_date.isoformat(),
+        })
+
     await AuditService(session).log(
         entity_type="report",
         entity_id=report.id,
@@ -314,9 +352,11 @@ async def update_report(
         },
         display_data={
             "title": "Report updated",
-            "summary": "reportData changed",
-            "old_calculated_points": old_snapshot.get("calculated_points"),
-            "new_calculated_points": report.calculated_points,
+            "summary": ", ".join(c["field"] for c in changes) + " changed",
+            **_criteria_context(report),
+            "changes": changes,
+            "oldCalculatedPoints": old_snapshot.get("calculated_points"),
+            "newCalculatedPoints": report.calculated_points,
         },
     )
     await session.commit()
@@ -372,10 +412,13 @@ async def set_calculation(
             "title": "Calculation method updated",
             "summary": f"{old_snapshot.get('calculation_method', 'auto')} → {report.calculation_method}"
             + (f" ({report.manual_points} pts)" if report.manual_points is not None else ""),
-            "old_method": old_snapshot.get("calculation_method"),
-            "new_method": report.calculation_method,
-            "manual_points": report.manual_points,
+            **_criteria_context(report),
+            "oldMethod": old_snapshot.get("calculation_method"),
+            "newMethod": report.calculation_method,
+            "manualPoints": report.manual_points,
+            "reason": payload.reason,
         },
+        reason=payload.reason,
     )
     await session.commit()
     loaded = await _get_report(session, report.id)
@@ -415,8 +458,10 @@ async def submit_report(session: AsyncSession, *, user: User, report_id: str) ->
         display_data={
             "title": "Status changed",
             "summary": f"{old_status.value} → {report.status.value}",
-            "old_status": old_status.value,
-            "new_status": report.status.value,
+            **_criteria_context(report),
+            "oldStatus": old_status.value,
+            "newStatus": report.status.value,
+            "calculatedPoints": report.calculated_points,
         },
     )
     await session.commit()
@@ -457,8 +502,9 @@ async def soft_delete_report(session: AsyncSession, *, user: User, report_id: st
         new_value={"is_deleted": True},
         display_data={
             "title": "Report deleted",
-            "summary": f"{old_status.value} deleted",
-            "old_status": old_status.value,
+            "summary": f"{report.criteria.code if report.criteria else '?'} deleted",
+            **_criteria_context(report),
+            "reportData": dict(report.report_data or {}),
         },
     )
     await session.commit()

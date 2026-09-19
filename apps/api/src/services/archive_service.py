@@ -16,6 +16,7 @@ from src.policies.common import ensure_moderator
 from src.schemas.common import ErrorCode
 from src.services.audit_service import AuditService
 from src.services.periods import semester_range
+from src.services.report_service import _criteria_context
 
 
 def _now() -> datetime:
@@ -83,11 +84,13 @@ async def archive_period(
             old_value={"status": old_status.value},
             new_value={"status": report.status.value, "archive_batch_id": batch.id},
             display_data={
-                "title": "Status changed",
-                "summary": f"{old_status.value} → {report.status.value}",
-                "old_status": old_status.value,
-                "new_status": report.status.value,
+                "title": "Report archived",
+                "summary": f"Archived in period {target_period}",
+                **_criteria_context(report),
+                "oldStatus": old_status.value,
+                "newStatus": report.status.value,
                 "period": target_period,
+                "batchId": batch.id,
             },
             reason=f"archive period {target_period}",
         )
@@ -107,7 +110,9 @@ async def complete_approved_if_stale(
 
     cutoff = datetime.now(UTC) - timedelta(days=older_than_days)
     result = await session.execute(
-        select(Report).where(
+        select(Report)
+        .options(selectinload(Report.criteria))
+        .where(
             Report.status == ReportStatus.APPROVED,
             Report.is_deleted.is_(False),
             Report.moderated_at.is_not(None),
@@ -139,8 +144,9 @@ async def complete_approved_if_stale(
             display_data={
                 "title": "Auto-completed",
                 "summary": f"{old_status.value} → {report.status.value} (auto after {older_than_days}d)",
-                "old_status": old_status.value,
-                "new_status": report.status.value,
+                **_criteria_context(report),
+                "oldStatus": old_status.value,
+                "newStatus": report.status.value,
                 "auto": True,
             },
             reason=f"auto-complete after {older_than_days}d",

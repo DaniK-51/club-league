@@ -127,6 +127,19 @@ export enum ErrorCode {
  *
  * AUDIT DISPLAY_DATA:
  * - Каждая запись audit_logs содержит display_data (JSONB) для фронтенда.
- * - Пример: { title: "Status changed", summary: "ON_MODERATION → APPROVED", old_status: "...", new_status: "..." }
+ * - Все события содержат criteriaCode, criteriaName, activityDate.
+ * - created: { title, summary, criteriaCode, criteriaName, criteriaNameEn, activityDate,
+ *              reportData, links, calculatedPoints, isOverdue }
+ * - status_changed: { title, summary, criteriaCode, ..., oldStatus, newStatus,
+ *                     calculatedPoints, finalPoints, calculationMethod, manualPoints, moderationComment }
+ * - points_updated: { title, summary, criteriaCode, ..., oldPoints, newPoints,
+ *                     calculationMethod, manualPoints, moderationComment }
+ * - calculation_updated: { title, summary, criteriaCode, ..., oldMethod, newMethod,
+ *                          manualPoints, reason }
+ * - updated: { title, summary, criteriaCode, ..., changes[], oldCalculatedPoints, newCalculatedPoints }
+ * - deleted: { title, summary, criteriaCode, ..., reportData, activityDate }
+ * - sudo_action: { title, summary, criteriaCode, ..., sudoAction, targetReportId,
+ *                  oldValue, newValue, reason }
+ * - archive: { title, summary, criteriaCode, ..., period, batchId }
  * - CommentEntry.displayData отдаёт это поле напрямую.
  */
