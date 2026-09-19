@@ -5,8 +5,11 @@ export function useSetCalculation(reportId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (dto: { method: 'auto' | 'manual'; manualPoints?: number }) =>
-      api.setCalculation(reportId, dto),
+    mutationFn: (dto: {
+      method: 'auto' | 'manual'
+      manualPoints?: number
+      reason?: string
+    }) => api.setCalculation(reportId, dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reports', reportId] })
       queryClient.invalidateQueries({ queryKey: ['reports'] })

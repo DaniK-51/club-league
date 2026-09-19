@@ -194,6 +194,7 @@
     "pointsPlaceholder": "Авто",
     "actionError": "Ошибка при модерации",
     "reasonLabel": "Причина",
+    "reasonPlaceholder": "Укажите причину изменения…",
     "paramsUpdated": "параметры обновлены",
     "filterAll": "Все",
     "queueEmpty": "Нет отчётов с этим статусом",

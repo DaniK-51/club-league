@@ -77,6 +77,7 @@ function ReportSidebarInner({ report, rule, criteriaName, onNavigateBack }: Repo
   const [manualPoints, setManualPoints] = useState(
     report.finalPoints?.toString() ?? ''
   )
+  const [calcReason, setCalcReason] = useState('')
 
   // Report data editing state — initialized from report on mount
   const [reportData, setReportData] = useState<Record<string, unknown>>(
@@ -153,9 +154,13 @@ function ReportSidebarInner({ report, rule, criteriaName, onNavigateBack }: Repo
       {
         method: calcMode,
         ...(calcMode === 'manual' ? { manualPoints: Number(manualPoints) || 0 } : {}),
+        ...(calcReason.trim() ? { reason: calcReason.trim() } : {}),
       },
       {
-        onSuccess: () => setEditingResult(false),
+        onSuccess: () => {
+          setEditingResult(false)
+          setCalcReason('')
+        },
         onError: (err) => {
           setActionError(
             err instanceof ApiError ? err.message : t('moderation.actionError')
@@ -290,6 +295,17 @@ function ReportSidebarInner({ report, rule, criteriaName, onNavigateBack }: Repo
                       />
                     </div>
                   )}
+                  <div className="space-y-1">
+                    <Label className="text-xs">
+                      {t('moderation.reasonLabel')}
+                    </Label>
+                    <Textarea
+                      value={calcReason}
+                      onChange={(e) => setCalcReason(e.target.value)}
+                      placeholder={t('moderation.reasonPlaceholder')}
+                      rows={2}
+                    />
+                  </div>
                   <div className="flex gap-2">
                     <Button
                       size="sm"
@@ -302,7 +318,10 @@ function ReportSidebarInner({ report, rule, criteriaName, onNavigateBack }: Repo
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setEditingResult(false)}
+                      onClick={() => {
+                        setEditingResult(false)
+                        setCalcReason('')
+                      }}
                     >
                       {t('common.cancel')}
                     </Button>

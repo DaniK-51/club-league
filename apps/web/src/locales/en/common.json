@@ -194,6 +194,7 @@
     "pointsPlaceholder": "Auto",
     "actionError": "Moderation action failed",
     "reasonLabel": "Reason",
+    "reasonPlaceholder": "Specify the reason for this change…",
     "paramsUpdated": "parameters updated",
     "filterAll": "All",
     "queueEmpty": "No reports with this status",

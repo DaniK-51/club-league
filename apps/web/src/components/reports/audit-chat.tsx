@@ -127,36 +127,70 @@ function SystemEvent({ entry }: { entry: CommentEntry }) {
   const icon = ACTION_ICONS[entry.action] ?? ACTION_ICONS.comment
   const dd = (entry.displayData ?? {}) as Record<string, unknown>
 
-  // Render different detail based on action type
+  // Helper to get criteria label
+  const getCriteriaLabel = (): string | null => {
+    const code = dd.criteriaCode ? String(dd.criteriaCode) : null
+    const name = dd.criteriaName ? String(dd.criteriaName) : null
+    if (code && name) return `${code} — ${name}`
+    return code
+  }
+
+  // Helper to format links
+  const formatLinks = (links: unknown): string | null => {
+    if (!Array.isArray(links) || links.length === 0) return null
+    return links
+      .map((l) => {
+        if (l && typeof l === 'object' && 'domain' in l) return String(l.domain)
+        return null
+      })
+      .filter(Boolean)
+      .join(', ')
+  }
+
+  // Helper to format reportData params
+  const formatParams = (data: unknown): string | null => {
+    if (!data || typeof data !== 'object') return null
+    const entries = Object.entries(data as Record<string, unknown>)
+      .filter(([, v]) => v != null && v !== '')
+    if (entries.length === 0) return null
+    return entries
+      .map(([k, v]) => `${k}: ${String(v)}`)
+      .join(', ')
+  }
+
+  // Render detail based on action type
   const renderDetail = (): { detail: React.ReactNode; reason: string | null } => {
+    const criteriaLabel = getCriteriaLabel()
+
     switch (entry.action) {
       case 'created': {
-        const pts = dd.calculated_points
+        const pts = dd.calculatedPoints
+        const params = formatParams(dd.reportData)
+        const links = formatLinks(dd.links)
         return {
           detail: (
-            <>
-              {typeof pts === 'number' && pts > 0 && (
-                <span className="text-muted-foreground">
-                  — {pts} {t('report.pointsUnit')}
-                </span>
-              )}
-            </>
+            <span className="text-muted-foreground">
+              {criteriaLabel && <> — {criteriaLabel}</>}
+              {typeof pts === 'number' && <> — {pts} {t('report.pointsUnit')}</>}
+              {params && <> — {params}</>}
+              {links && <> — {links}</>}
+            </span>
           ),
           reason: null,
         }
       }
 
       case 'status_changed': {
-        const oldS = dd.old_status ? String(dd.old_status) : null
-        const newS = dd.new_status ? String(dd.new_status) : null
-        const finalPts = dd.final_points
-        const modComment = dd.moderation_comment
-        const reason = entry.oldValue && typeof entry.oldValue === 'object'
-          ? String((entry.oldValue as Record<string, unknown>).reason ?? '')
-          : null
+        const oldS = dd.oldStatus ? String(dd.oldStatus) : null
+        const newS = dd.newStatus ? String(dd.newStatus) : null
+        const calcPts = dd.calculatedPoints
+        const finPts = dd.finalPoints
+        const calcMethod = dd.calculationMethod ? String(dd.calculationMethod) : null
+        const manualPts = dd.manualPoints
+        const modComment = dd.moderationComment ? String(dd.moderationComment) : null
 
         if (!oldS || !newS) {
-          return { detail: null, reason: null }
+          return { detail: criteriaLabel ? <span className="text-muted-foreground"> — {criteriaLabel}</span> : null, reason: null }
         }
 
         const fromLabel = t(`report.status.${oldS}` as string, oldS)
@@ -164,81 +198,105 @@ function SystemEvent({ entry }: { entry: CommentEntry }) {
 
         return {
           detail: (
-            <>
-              <span className="font-medium">
-                {fromLabel} → {toLabel}
-              </span>
-              {typeof finalPts === 'number' && (
-                <span className="ml-2 text-muted-foreground">
-                  ({finalPts} {t('report.pointsUnit')})
-                </span>
+            <span className="text-muted-foreground">
+              {criteriaLabel && <> — {criteriaLabel}</>}
+              {' — '}
+              <span className="font-medium">{fromLabel} → {toLabel}</span>
+              {typeof calcPts === 'number' && (
+                <> — {t('moderation.calculated')}: {calcPts}</>
               )}
-            </>
+              {typeof finPts === 'number' && (
+                <> — {t('moderation.final')}: {finPts}</>
+              )}
+              {calcMethod === 'manual' && typeof manualPts === 'number' && (
+                <> — {t('moderation.calcModes.manual')}: {manualPts}</>
+              )}
+            </span>
           ),
-          reason: (modComment ? String(modComment) : null) ?? (reason || null),
+          reason: modComment,
         }
       }
 
       case 'points_updated': {
-        const oldP = dd.old_points != null ? String(dd.old_points) : '—'
-        const newP = dd.new_points != null ? String(dd.new_points) : '—'
+        const oldP = dd.oldPoints != null ? String(dd.oldPoints) : '—'
+        const newP = dd.newPoints != null ? String(dd.newPoints) : '—'
+        const calcMethod = dd.calculationMethod ? String(dd.calculationMethod) : null
+        const modComment = dd.moderationComment ? String(dd.moderationComment) : null
         return {
           detail: (
-            <span className="font-medium">
-              {oldP} → {newP} {t('report.pointsUnit')}
+            <span className="text-muted-foreground">
+              {criteriaLabel && <> — {criteriaLabel}</>}
+              {' — '}
+              <span className="font-medium">
+                {oldP} → {newP} {t('report.pointsUnit')}
+              </span>
+              {calcMethod && <> — {t(`moderation.calcModes.${calcMethod}` as string, calcMethod)}</>}
             </span>
           ),
-          reason: null,
+          reason: modComment,
         }
       }
 
       case 'calculation_updated': {
-        const oldM = dd.old_method ? String(dd.old_method) : null
-        const newM = dd.new_method ? String(dd.new_method) : null
-        const manualPts = dd.manual_points != null ? String(dd.manual_points) : null
-        if (!oldM && !newM) return { detail: null, reason: null }
+        const oldM = dd.oldMethod ? String(dd.oldMethod) : null
+        const newM = dd.newMethod ? String(dd.newMethod) : null
+        const manualPts = dd.manualPoints != null ? String(dd.manualPoints) : null
+        const reason = dd.reason ? String(dd.reason) : null
+
+        if (!oldM && !newM) {
+          return { detail: criteriaLabel ? <span className="text-muted-foreground"> — {criteriaLabel}</span> : null, reason: null }
+        }
 
         const fromM = oldM ? t(`moderation.calcModes.${oldM}` as string, oldM) : '—'
         const toM = newM ? t(`moderation.calcModes.${newM}` as string, newM) : '—'
 
         return {
           detail: (
-            <>
+            <span className="text-muted-foreground">
+              {criteriaLabel && <> — {criteriaLabel}</>}
+              {' — '}
               <span className="font-medium">
                 {fromM} → {toM}
               </span>
               {newM === 'manual' && manualPts != null && (
-                <span className="ml-2 text-muted-foreground">
-                  ({manualPts} {t('report.pointsUnit')})
-                </span>
+                <> ({manualPts} {t('report.pointsUnit')})</>
               )}
-            </>
+            </span>
+          ),
+          reason,
+        }
+      }
+
+      case 'updated': {
+        const oldPts = dd.oldCalculatedPoints != null ? String(dd.oldCalculatedPoints) : null
+        const newPts = dd.newCalculatedPoints != null ? String(dd.newCalculatedPoints) : null
+        const params = formatParams(dd.reportData)
+        return {
+          detail: (
+            <span className="text-muted-foreground">
+              {criteriaLabel && <> — {criteriaLabel}</>}
+              {oldPts && newPts && (
+                <> — {t('report.pointsUnit')}: {oldPts} → {newPts}</>
+              )}
+              {params && <> — {params}</>}
+            </span>
           ),
           reason: null,
         }
       }
 
-      case 'updated': {
-        const oldPts = dd.old_calculated_points != null ? String(dd.old_calculated_points) : null
-        const newPts = dd.new_calculated_points != null ? String(dd.new_calculated_points) : null
-        if (oldPts || newPts) {
-          return {
-            detail: (
-              <span className="text-muted-foreground">
-                — {t('report.pointsUnit')}: {oldPts ?? '—'} → {newPts ?? '—'}
-              </span>
-            ),
-            reason: null,
-          }
-        }
+      case 'deleted': {
+        const params = formatParams(dd.reportData)
         return {
-          detail: <span className="text-muted-foreground">— {t('report.paramsUpdated')}</span>,
+          detail: (
+            <span className="text-muted-foreground">
+              {criteriaLabel && <> — {criteriaLabel}</>}
+              {params && <> — {params}</>}
+            </span>
+          ),
           reason: null,
         }
       }
-
-      case 'deleted':
-        return { detail: null, reason: null }
 
       case 'sudo_action': {
         return {
@@ -247,19 +305,20 @@ function SystemEvent({ entry }: { entry: CommentEntry }) {
         }
       }
 
-      default:
+      default: {
         return {
-          detail: entry.body && entry.body !== entry.action
-            ? <span className="text-muted-foreground">— {entry.body}</span>
-            : null,
+          detail: criteriaLabel ? (
+            <span className="text-muted-foreground"> — {criteriaLabel}</span>
+          ) : entry.body && entry.body !== entry.action ? (
+            <span className="text-muted-foreground"> — {entry.body}</span>
+          ) : null,
           reason: null,
         }
+      }
     }
   }
 
   const { detail, reason } = renderDetail()
-
-  // Action label — short description
   const actionLabel = t(`audit.actions.${entry.action}`, entry.action)
 
   return (
@@ -278,7 +337,6 @@ function SystemEvent({ entry }: { entry: CommentEntry }) {
         </span>
       </div>
 
-      {/* Reason block — separate below */}
       {reason && (
         <div className="mb-2 ml-7 rounded-md border-l-2 border-muted bg-muted/30 px-3 py-2">
           <div className="mb-1 text-xs text-muted-foreground">

@@ -184,7 +184,7 @@ class ApiClient {
 
   async setCalculation(
     id: string,
-    dto: { method: 'auto' | 'manual'; manualPoints?: number }
+    dto: { method: 'auto' | 'manual'; manualPoints?: number; reason?: string }
   ): Promise<ReportResponse> {
     return this.request<ReportResponse>(`/api/reports/${id}/calculation`, {
       method: 'PATCH',
