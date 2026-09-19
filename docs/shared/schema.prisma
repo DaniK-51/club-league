@@ -36,6 +36,7 @@ model Criteria {
   nameEn      String
   category    ClubCategory?    // NULL means common for all
   rules       CriteriaRule[]
+  reports     Report[]
 }
 
 model CriteriaRule {
@@ -57,6 +58,17 @@ model RulesVersion {
   reports     Report[]
 }
 
+model Period {
+  id         String   @id @default(uuid())
+  name       String   @unique  // "2026-fall"
+  startDate  DateTime
+  endDate    DateTime
+  isArchived Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  reports    Report[]
+}
+
 model Report {
   id               String         @id @default(uuid())
   clubId           String
@@ -72,12 +84,16 @@ model Report {
   status           ReportStatus   @default(DRAFT)
   calculatedPoints Int?
   finalPoints      Int?
+  calculationMethod String        @default("auto")
+  manualPoints      Int?
   
   isDeleted        Boolean        @default(false)
   deletedAt        DateTime?
   
   archiveBatchId   String?
   archiveBatch     ArchiveBatch?  @relation(fields: [archiveBatchId], references: [id])
+  periodId         String?
+  period           Period?        @relation(fields: [periodId], references: [id])
   
   moderatedById    String?
   moderatedBy      User?          @relation("ModeratedReports", fields: [moderatedById], references: [id])
@@ -100,7 +116,7 @@ model ReportLink {
 
 model ArchiveBatch {
   id          String   @id @default(uuid())
-  period      String   // "2026-fall"
+  period      String   // Period.name, e.g. "2026-fall" (string snapshot, not FK)
   archivedAt  DateTime @default(now())
   archivedById String
   reportCount Int
@@ -112,11 +128,12 @@ model AuditLog {
   seq             BigInt   @unique @default(autoincrement())
   prevHash        String   // SHA-256 предыдущей записи (для genesis: 64 нуля)
   hash            String   // SHA-256 текущей записи
-  entityType      String   // "report", "rule", "user"
+  entityType      String   // "report", "rule", "user", "period"
   entityId        String
-  action          String   // "created", "status_changed", "points_updated", "sudo_action"
+  action          String   // "created", "updated", "status_changed", "points_updated", "deleted", "sudo_action", "comment", "calculation_updated" (+ period created/updated/deleted)
   oldValue        Json?
   newValue        Json?
+  displayData     Json?    // For frontend rendering (title, summary, old/new status, etc.)
   performedById   String
   performedBy     User     @relation(fields: [performedById], references: [id])
   performedByRole String
