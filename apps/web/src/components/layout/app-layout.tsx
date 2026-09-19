@@ -21,12 +21,11 @@ export function AppLayout() {
             <Link to="/rating" className="text-sm hover:underline">
               {t('nav.rating')}
             </Link>
-            {isAuthenticated &&
-              (user?.role === 'CLUB_LEADER' || user?.role === 'MODERATOR') && (
-                <Link to="/reports" className="text-sm hover:underline">
-                  {t('nav.reports')}
-                </Link>
-              )}
+            {isAuthenticated && user?.role === 'CLUB_LEADER' && (
+              <Link to="/reports" className="text-sm hover:underline">
+                {t('nav.reports')}
+              </Link>
+            )}
             {isAuthenticated && user?.role === 'MODERATOR' && (
               <>
                 <Link to="/moderation" className="text-sm hover:underline">
