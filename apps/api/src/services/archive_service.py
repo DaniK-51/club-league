@@ -10,12 +10,11 @@ from sqlalchemy.orm import selectinload
 
 from src.core.config import get_settings
 from src.core.errors import api_error
-from src.models.entities import ArchiveBatch, Report, User
+from src.models.entities import ArchiveBatch, Period, Report, User
 from src.models.enums import ReportStatus, UserRole
 from src.policies.common import ensure_moderator
 from src.schemas.common import ErrorCode
 from src.services.audit_service import AuditService
-from src.services.periods import semester_range
 from src.services.report_service import _criteria_context
 
 
@@ -23,19 +22,38 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+async def _resolve_period_range(
+    session: AsyncSession, period_name: str
+) -> tuple[datetime, datetime, str]:
+    """Return (start, end, period_name). Period table is source of truth."""
+    period = await session.scalar(select(Period).where(Period.name == period_name))
+    if period is None:
+        raise api_error(
+            404,
+            ErrorCode.PERIOD_NOT_FOUND,
+            f"Period {period_name} not found",
+        )
+    if period.is_archived:
+        raise api_error(
+            400,
+            ErrorCode.ALREADY_ARCHIVED,
+            f"Period {period_name} already archived",
+        )
+    return period.start_date, period.end_date, period.name
+
+
 async def archive_period(
     session: AsyncSession, *, user: User, period: str | None = None
 ) -> ArchiveBatch:
     """Move COMPLETED/CLOSED reports of the period to ARCHIVED.
 
-    Filter: `activity_date` inside semester range (docs: batch archive by period).
+    Filter: `activity_date` inside period range from the Period table.
     """
     ensure_moderator(user)
     target_period = period or get_settings().current_semester
-    rng = semester_range(target_period)
-    if rng is None:
-        raise api_error(400, ErrorCode.INVALID_STATUS_TRANSITION, f"Invalid period: {target_period}")
-    start, end = rng
+    start, end, period_name = await _resolve_period_range(session, target_period)
+
+    period_row = await session.scalar(select(Period).where(Period.name == period_name))
 
     result = await session.execute(
         select(Report)
@@ -61,7 +79,7 @@ async def archive_period(
         )
 
     batch = ArchiveBatch(
-        period=target_period,
+        period=period_name,
         archived_at=_now(),
         archived_by_id=user.id,
         report_count=len(reports),
@@ -85,15 +103,19 @@ async def archive_period(
             new_value={"status": report.status.value, "archive_batch_id": batch.id},
             display_data={
                 "title": "Report archived",
-                "summary": f"Archived in period {target_period}",
+                "summary": f"Archived in period {period_name}",
                 **_criteria_context(report),
                 "oldStatus": old_status.value,
                 "newStatus": report.status.value,
-                "period": target_period,
+                "period": period_name,
                 "batchId": batch.id,
             },
-            reason=f"archive period {target_period}",
+            reason=f"archive period {period_name}",
         )
+
+    if period_row is not None:
+        period_row.is_archived = True
+        period_row.updated_at = _now()
 
     await session.commit()
     return batch
@@ -128,7 +150,6 @@ async def complete_approved_if_stale(
     for report in reports:
         performer = report.moderated_by_id or actor_id
         if not performer:
-            # Never mutate without an audit actor (FK-safe)
             continue
         old_status = report.status
         report.status = ReportStatus.COMPLETED

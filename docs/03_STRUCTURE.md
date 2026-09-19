@@ -10,9 +10,10 @@ apps/api/
       12541184b6c1_add_audit_logs_seq_identity.py
       a1b2c3d4e5f6_add_calculation_method.py
       b7c8d9e0f1a2_add_display_data.py
+      c3d4e5f6a7b8_add_periods.py
   scripts/
     seed_dev_users.py           # Dev: moderator/leader/guest + club
-    seed_rules.py               # v2 catalog: C1–C11, S1–S4, T1–T3, A1–A4, I1–I4, G1
+    seed_rules.py               # v2 catalog + default periods + report→period backfill
     verify_audit_chain.py       # Hash chain integrity check
   src/
     main.py                     # FastAPI app, CORS, i18n middleware, error handlers
@@ -23,7 +24,7 @@ apps/api/
         users.py                # GET /users/me
         reports.py              # CRUD, submit, calculation, comments
         moderation.py           # moderate, dispute, complete, archive
-        admin.py                # sudo, sync force/status, rules CRUD, audit list
+        admin.py                # sudo, sync force/status, rules CRUD, audit list, periods CRUD
         rating.py               # GET /rating (public)
     core/
       config.py                 # Settings (env), domain whitelist, pool, rate-limit
@@ -44,6 +45,7 @@ apps/api/
       sudo.py                   # SudoActionDTO, SudoSuccess
       sync.py                   # SyncStatus, SyncQueued, RatingResponse
       criteria.py               # CriteriaOut, RuleOut, AuditLogOut
+      period.py                 # PeriodOut, CreatePeriodDTO, UpdatePeriodDTO
     services/
       audit_service.py          # Hash chain, AuditService.log/log_sudo_action/verify_chain
       audit_query.py            # Admin audit list query
@@ -63,7 +65,8 @@ apps/api/
       comments_service.py       # Thread from audit_logs + POST comment
       criteria_service.py       # Criteria list + admin rules CRUD
       link_validation.py        # Whitelist domain validation
-      periods.py                # Semester → date range (Europe/Moscow)
+      periods.py                # Semester → date range fallback (Europe/Moscow)
+      period_service.py         # Period CRUD + resolve by activity_date
       sudo_service.py           # force_status / restore_deleted / override_points
       violations_service.py     # access_violations logger
     policies/

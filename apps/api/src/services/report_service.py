@@ -95,6 +95,7 @@ def report_to_response(report: Report) -> ReportResponse:
         finalPoints=report.final_points,
         calculationMethod=report.calculation_method or "auto",
         manualPoints=report.manual_points,
+        periodName=report.period.name if report.period else None,
         links=[{"url": link.url, "domain": link.domain} for link in report.links],
         reportData=dict(report.report_data or {}),
     )
@@ -118,7 +119,9 @@ async def _get_report(session: AsyncSession, report_id: str) -> Report | None:
             selectinload(Report.links),
             selectinload(Report.club),
             selectinload(Report.criteria),
+            selectinload(Report.period),
         )
+        .execution_options(populate_existing=True)
         .where(Report.id == report_id, Report.is_deleted.is_(False))
     )
 
@@ -176,6 +179,10 @@ async def create_report(
     points = _calculate_points(rule, dict(payload.reportData))
     now = _now()
 
+    from src.services.period_service import resolve_period_for_date
+
+    period = await resolve_period_for_date(session, activity_date)
+
     report = Report(
         club_id=club_id,
         criteria_id=criteria.id,
@@ -184,6 +191,7 @@ async def create_report(
         report_data=dict(payload.reportData),
         status=ReportStatus.DRAFT,
         calculated_points=points,
+        period_id=period.id if period else None,
         is_deleted=False,
         created_at=now,
         updated_at=now,
@@ -295,6 +303,11 @@ async def update_report(
 
     if payload.activityDate is not None:
         report.activity_date = parse_activity_date(payload.activityDate)
+        from src.services.period_service import resolve_period_for_date
+
+        new_period = await resolve_period_for_date(session, report.activity_date)
+        report.period_id = new_period.id if new_period else None
+        report.period = new_period
     if payload.reportData is not None:
         report.report_data = dict(payload.reportData)
     if payload.links is not None:
@@ -531,6 +544,7 @@ async def list_reports(
             selectinload(Report.links),
             selectinload(Report.club),
             selectinload(Report.criteria),
+            selectinload(Report.period),
         )
         .where(Report.is_deleted.is_(False))
         .order_by(Report.created_at.desc())

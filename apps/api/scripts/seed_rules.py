@@ -438,6 +438,44 @@ async def seed() -> None:
             session.add(version)
             await session.flush()
 
+        from zoneinfo import ZoneInfo
+
+        from src.models.entities import Period
+
+        tz = ZoneInfo("Europe/Moscow")
+        default_periods = [
+            ("2026-fall", datetime(2026, 9, 1, tzinfo=tz), datetime(2027, 1, 1, tzinfo=tz)),
+            ("2026-spring", datetime(2026, 1, 1, tzinfo=tz), datetime(2026, 6, 1, tzinfo=tz)),
+            ("2026-summer", datetime(2026, 6, 1, tzinfo=tz), datetime(2026, 9, 1, tzinfo=tz)),
+        ]
+        for name, start, end in default_periods:
+            existing = await session.scalar(select(Period).where(Period.name == name))
+            if existing is None:
+                now = datetime.now(UTC)
+                session.add(
+                    Period(
+                        name=name,
+                        start_date=start,
+                        end_date=end,
+                        is_archived=False,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
+        await session.flush()
+
+        from src.models.entities import Report
+        from src.services.period_service import resolve_period_for_date
+
+        result = await session.execute(
+            select(Report).where(Report.period_id.is_(None), Report.is_deleted.is_(False))
+        )
+        for report in result.scalars().all():
+            period = await resolve_period_for_date(session, report.activity_date)
+            if period is not None:
+                report.period_id = period.id
+        await session.flush()
+
         for item in CRITERIA:
             code = str(item["code"])
             rule_type = str(item["rule_type"])
@@ -479,7 +517,7 @@ async def seed() -> None:
         await session.commit()
         print(
             f"Seeded rules version={SEMESTER} count={len(CRITERIA)} "
-            f"codes={[str(i['code']) for i in CRITERIA]}"
+            f"codes={[str(i['code']) for i in CRITERIA]} periods=default-2026"
         )
 
 

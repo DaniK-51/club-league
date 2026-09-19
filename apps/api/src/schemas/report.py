@@ -67,6 +67,7 @@ class ReportResponse(BaseModel):
     finalPoints: int | None
     calculationMethod: str = "auto"
     manualPoints: int | None = None
+    periodName: str | None = None
     links: list[LinkOut]
     reportData: dict[str, Any] = Field(default_factory=dict)
 

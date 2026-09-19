@@ -152,7 +152,12 @@ async def test_debouncer_flush_uses_writer(monkeypatch: pytest.MonkeyPatch) -> N
     writer = _RecordingWriter()
     d = SyncDebouncer(debounce_seconds=1)
 
-    async def fake_compute(session: object, *, semester: str) -> list[ClubTotal]:
+    async def fake_compute(
+        session: object,
+        *,
+        semester: str | None = None,
+        period_name: str | None = None,
+    ) -> list[ClubTotal]:
         return [
             ClubTotal(club_id="c1", club_name="Club", total_points=10, breakdown={"C8": 10})
         ]

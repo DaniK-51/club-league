@@ -13,6 +13,7 @@ from src.models.entities import User
 from src.models.enums import ClubCategory
 from src.schemas.common import ApiSuccess, ErrorCode
 from src.schemas.criteria import AuditListResponse, CriteriaOut, RuleOut, UpdateRuleDTO
+from src.schemas.period import CreatePeriodDTO, PeriodOut, UpdatePeriodDTO
 from src.schemas.sudo import SudoActionDTO, SudoSuccess
 from src.schemas.sync import SyncForceRequest, SyncQueued, SyncStatus
 from src.services.audit_query import list_audit_logs
@@ -21,6 +22,13 @@ from src.services.criteria_service import (
     get_rule,
     list_criteria,
     update_rule,
+)
+from src.services.period_service import (
+    PeriodNotFoundError,
+    create_period,
+    delete_period,
+    list_periods,
+    update_period,
 )
 from src.services.sudo_service import (
     SudoReportNotFoundError,
@@ -123,6 +131,55 @@ async def admin_audit_list(
         offset=offset,
     )
     return ApiSuccess(data=result)
+
+
+# ─── Periods CRUD (moderator) ────────────────────────────────────────────
+
+
+@router.get("/periods", response_model=ApiSuccess[list[PeriodOut]])
+async def admin_list_periods(
+    user: Annotated[User, Depends(require_moderator)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiSuccess[list[PeriodOut]]:
+    items = await list_periods(session, user=user)
+    return ApiSuccess(data=items)
+
+
+@router.post("/periods", response_model=ApiSuccess[PeriodOut], status_code=201)
+async def admin_create_period(
+    payload: CreatePeriodDTO,
+    user: Annotated[User, Depends(require_moderator)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiSuccess[PeriodOut]:
+    item = await create_period(session, user=user, payload=payload)
+    return ApiSuccess(data=item)
+
+
+@router.patch("/periods/{period_id}", response_model=ApiSuccess[PeriodOut])
+async def admin_update_period(
+    period_id: str,
+    payload: UpdatePeriodDTO,
+    user: Annotated[User, Depends(require_moderator)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiSuccess[PeriodOut]:
+    try:
+        item = await update_period(session, user=user, period_id=period_id, payload=payload)
+    except PeriodNotFoundError:
+        raise api_error(404, ErrorCode.PERIOD_NOT_FOUND, "Period not found") from None
+    return ApiSuccess(data=item)
+
+
+@router.delete("/periods/{period_id}", response_model=ApiSuccess[dict[str, bool]])
+async def admin_delete_period(
+    period_id: str,
+    user: Annotated[User, Depends(require_moderator)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiSuccess[dict[str, bool]]:
+    try:
+        await delete_period(session, user=user, period_id=period_id)
+    except PeriodNotFoundError:
+        raise api_error(404, ErrorCode.PERIOD_NOT_FOUND, "Period not found") from None
+    return ApiSuccess(data={"success": True})
 
 
 criteria_router = APIRouter(tags=["criteria"])

@@ -19,6 +19,7 @@ from src.models.entities import (
     ClubLeader,
     Criteria,
     CriteriaRule,
+    Period,
     Report,
     ReportLink,
     RulesVersion,
@@ -34,6 +35,7 @@ async def _wipe() -> None:
         await session.execute(text("TRUNCATE archive_batches RESTART IDENTITY CASCADE"))
         await session.execute(delete(ReportLink))
         await session.execute(delete(Report))
+        await session.execute(delete(Period))
         await session.execute(delete(CriteriaRule))
         await session.execute(delete(Criteria))
         await session.execute(delete(RulesVersion))
@@ -133,6 +135,24 @@ async def env(client: AsyncClient) -> AsyncIterator[dict[str, str]]:
                 ),
             ]
         )
+        from zoneinfo import ZoneInfo
+
+        tz = ZoneInfo("Europe/Moscow")
+        now_p = datetime.now(UTC)
+        for pname, ps, pe in [
+            ("2026-fall", datetime(2026, 9, 1, tzinfo=tz), datetime(2027, 1, 1, tzinfo=tz)),
+            ("2026-spring", datetime(2026, 1, 1, tzinfo=tz), datetime(2026, 6, 1, tzinfo=tz)),
+        ]:
+            session.add(
+                Period(
+                    name=pname,
+                    start_date=ps,
+                    end_date=pe,
+                    is_archived=False,
+                    created_at=now_p,
+                    updated_at=now_p,
+                )
+            )
         await session.commit()
         yield {
             "leader": create_access_token(user_id=leader.id, role=UserRole.CLUB_LEADER, can_sudo=False),

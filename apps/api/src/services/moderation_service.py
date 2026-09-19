@@ -55,9 +55,17 @@ def requires_comment(
     calculated: int | None,
     final_points: int | None,
     comment: str,
+    calculation_method: str = "auto",
 ) -> bool:
+    """Comment required for CHANGES_REQUIRED or explicit override.
+
+    When calculation_method="manual", points were already justified via
+    PATCH /calculation (which has its own reason + audit trail).
+    """
     if target_status == ReportStatus.CHANGES_REQUIRED:
         return True
+    if calculation_method == "manual":
+        return False
     return final_points is not None and calculated is not None and final_points != calculated
 
 
@@ -89,6 +97,7 @@ async def moderate_report(
         calculated=report.calculated_points,
         final_points=final_points,
         comment=comment,
+        calculation_method=report.calculation_method or "auto",
     ) and not comment:
         raise api_error(
             400,

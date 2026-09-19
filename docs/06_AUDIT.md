@@ -26,7 +26,7 @@
 | `seq` | BIGINT IDENTITY | Монотонный порядок цепочки (генерируется БД) |
 | `prev_hash` | VARCHAR(64) | SHA-256 предыдущей записи (genesis = 64 нуля) |
 | `hash` | VARCHAR(64) | SHA-256 текущей записи |
-| `entity_type` | VARCHAR(64) | Тип сущности: `report`, `user`, `rule` |
+| `entity_type` | VARCHAR(64) | Тип сущности: `report`, `user`, `rule`, `period` |
 | `entity_id` | VARCHAR(64) | Идентификатор сущности |
 | `action` | VARCHAR(64) | Действие (см. раздел 4) |
 | `old_value` | JSONB | Состояние до изменения (nullable) |
@@ -342,6 +342,7 @@ except ChainBrokenError as exc:
 | `report` | Отчёт о деятельности клуба |
 | `user` | Пользователь системы |
 | `rule` | Правило расчёта баллов (`criteria_rules`) |
+| `period` | Расчётный период (`periods`) |
 
 ---
 

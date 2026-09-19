@@ -105,6 +105,22 @@ class RulesVersion(Base):
     reports: Mapped[list["Report"]] = relationship(back_populates="rules_version")
 
 
+class Period(Base):
+    """Расчётный период (семестр). Админ создаёт/редактирует."""
+
+    __tablename__ = "periods"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    end_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    reports: Mapped[list["Report"]] = relationship(back_populates="period")
+
+
 class CriteriaRule(Base):
     __tablename__ = "criteria_rules"
 
@@ -172,6 +188,9 @@ class Report(Base):
     archive_batch_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("archive_batches.id", ondelete="SET NULL"), nullable=True
     )
+    period_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("periods.id", ondelete="SET NULL"), nullable=True
+    )
     moderated_by_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
@@ -185,6 +204,7 @@ class Report(Base):
     criteria: Mapped[Criteria] = relationship(back_populates="reports")
     rules_version: Mapped[RulesVersion] = relationship(back_populates="reports")
     archive_batch: Mapped[ArchiveBatch | None] = relationship(back_populates="reports")
+    period: Mapped["Period | None"] = relationship(back_populates="reports")
     moderated_by: Mapped[User | None] = relationship(
         back_populates="moderated_reports",
         foreign_keys=[moderated_by_id],

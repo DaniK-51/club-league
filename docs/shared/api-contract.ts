@@ -20,7 +20,7 @@ export interface UpdateReportDTO {
 export interface ModerateReportDTO {
   status: 'APPROVED' | 'CHANGES_REQUIRED' | 'CLOSED';
   finalPoints?: number; // Если модератор меняет баллы
-  comment: string; // Обязателен при CHANGES_REQUIRED или изменении баллов
+  comment: string; // Обязателен при CHANGES_REQUIRED или override при auto; НЕ обязателен при calculationMethod=manual
 }
 
 export interface DisputeReportDTO {
@@ -71,12 +71,13 @@ export interface ReportResponse {
   clubName: string;
   criteriaCode: string;
   activityDate: string;
-  isOverdue: boolean; // Вычисляется на бэке: activityDate + 7 days < today
+  isOverdue: boolean;
   status: ReportStatus;
   calculatedPoints: number | null;
   finalPoints: number | null;
   calculationMethod: CalculationMethod;
   manualPoints: number | null;
+  periodName: string | null;
   links: { url: string; domain: string }[];
   reportData: Record<string, unknown>;
 }
@@ -168,6 +169,27 @@ export interface SudoSuccess {
   success: true;
 }
 
+export interface PeriodOut {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isArchived: boolean;
+  reportCount: number;
+}
+
+export interface CreatePeriodDTO {
+  name: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface UpdatePeriodDTO {
+  name?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+}
+
 export interface ApiSuccess<T> { data: T }
 export interface ApiError { error: { code: string; message: string } }
 
@@ -189,13 +211,17 @@ export interface ApiError { error: { code: string; message: string } }
 // PATCH  /api/reports/:id/calculation  -> SetCalculationDTO -> ReportResponse (модератор, без смены статуса)
 // POST   /api/reports/:id/comments     -> CreateCommentDTO -> CommentEntry (leader/moderator)
 // POST   /api/reports/archive?period=  -> batch COMPLETED/CLOSED → ARCHIVED (модератор)
-// GET    /api/rating?semester=2026-fall -> { clubs: RatingClub[] }
+// GET    /api/rating?period=&semester=  -> { clubs: RatingClub[] } (period приоритетнее)
 // POST   /api/admin/sync/force         -> { semester?: string } -> { status: 'queued' } (Только модератор)
 // GET    /api/admin/sync/status        -> SyncStatus
 // POST   /api/admin/sudo               -> SudoActionDTO -> { success: true } (Только модератор с can_sudo)
 // GET    /api/admin/rules/:id          -> RuleOut (модератор)
 // PATCH  /api/admin/rules/:id          -> UpdateRuleDTO -> RuleOut (модератор; config валидируется)
 // GET    /api/admin/audit?entityType=&entityId=&limit=&offset= -> AuditListResponse (модератор)
+// GET    /api/admin/periods             -> PeriodOut[] (модератор)
+// POST   /api/admin/periods             -> CreatePeriodDTO -> PeriodOut (модератор)
+// PATCH  /api/admin/periods/:id         -> UpdatePeriodDTO -> PeriodOut (модератор)
+// DELETE /api/admin/periods/:id         -> { success: true } (модератор; только без отчётов)
 
 // === Error Codes ===
 export enum ErrorCode {
@@ -216,8 +242,10 @@ export enum ErrorCode {
   // Business Logic
   REPORT_NOT_FOUND = 'REPORT_NOT_FOUND',
   INVALID_STATUS_TRANSITION = 'INVALID_STATUS_TRANSITION',
-  COMMENT_REQUIRED = 'COMMENT_REQUIRED', // Требуется для CHANGES_REQUIRED или изменения баллов
+  COMMENT_REQUIRED = 'COMMENT_REQUIRED',
   RULES_VERSION_NOT_FOUND = 'RULES_VERSION_NOT_FOUND',
+  PERIOD_NOT_FOUND = 'PERIOD_NOT_FOUND',
+  ALREADY_ARCHIVED = 'ALREADY_ARCHIVED',
   
   // System
   INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR',
@@ -258,4 +286,12 @@ export enum ErrorCode {
  * - archive (status_changed): + period, batchId
  * - CommentEntry.displayData отдаёт это поле напрямую (camelCase).
  * - CommentEntry.body = display_data.summary (fallback: reason / new_value).
+ *
+ * PERIODS:
+ * - Period — сущность в БД (name, startDate, endDate, isArchived).
+ * - Report привязывается к Period по activity_date при create/update.
+ * - ReportResponse.periodName — имя периода или null.
+ * - GET /api/rating?period=<name> фильтрует по Period; fallback на semester.
+ * - Archive: Period.isArchived = true после batch-архивации.
+ * - Approve: при calculation_method="manual" comment НЕ обязателен.
  */

@@ -82,7 +82,7 @@ class SyncDebouncer:
         writer = writer or build_client()
         try:
             async with factory() as session:
-                totals = await compute_rating(session, semester=settings.current_semester)
+                totals = await compute_rating(session)
                 rows = _totals_to_rows(totals, semester=settings.current_semester)
                 await writer.write_rows(rows)
             self.last_run_at = datetime.now(UTC)
@@ -112,9 +112,39 @@ def _totals_to_rows(totals: list[ClubTotal], *, semester: str) -> list[list[obje
     return rows
 
 
-async def compute_rating(session: AsyncSession, *, semester: str) -> list[ClubTotal]:
-    """COMPLETED reports for semester; monthly caps per month; then G1 from DB."""
-    rng = semester_range(semester)
+async def compute_rating(
+    session: AsyncSession,
+    *,
+    semester: str | None = None,
+    period_name: str | None = None,
+) -> list[ClubTotal]:
+    """COMPLETED reports for period/semester; monthly caps per month; then G1 from DB.
+
+    Priority: period_name (Period table) > semester (Period table) > current period.
+    """
+    from src.models.entities import Period
+    from src.services.period_service import get_current_period, get_period_by_name
+
+    start: datetime | None = None
+    end: datetime | None = None
+    period_label = period_name or semester or ""
+
+    period_row: Period | None = None
+    if period_name:
+        period_row = await get_period_by_name(session, period_name)
+    elif semester:
+        period_row = await get_period_by_name(session, semester)
+    else:
+        period_row = await get_current_period(session)
+
+    if period_row is not None:
+        start, end = period_row.start_date, period_row.end_date
+        period_label = period_row.name
+    elif period_label:
+        rng = semester_range(period_label)
+        if rng is not None:
+            start, end = rng
+
     query = (
         select(Report)
         .options(selectinload(Report.club), selectinload(Report.criteria))
@@ -123,15 +153,14 @@ async def compute_rating(session: AsyncSession, *, semester: str) -> list[ClubTo
             Report.is_deleted.is_(False),
         )
     )
-    if rng is not None:
-        start, end = rng
+    if start is not None and end is not None:
         query = query.where(Report.activity_date >= start, Report.activity_date < end)
 
     result = await session.execute(query)
     reports = list(result.scalars().all())
 
-    monthly_caps = await load_monthly_caps(session, semester=semester)
-    g1_list = await load_combined_caps(session, semester=semester)
+    monthly_caps = await load_monthly_caps(session, semester=period_label)
+    g1_list = await load_combined_caps(session, semester=period_label)
 
     # club → month → criteria → points
     nested: dict[str, dict[str, dict[str, int]]] = {}

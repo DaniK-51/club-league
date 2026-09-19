@@ -13,6 +13,7 @@ from src.models.entities import (
     ClubLeader,
     Criteria,
     CriteriaRule,
+    Period,
     Report,
     ReportLink,
     RulesVersion,
@@ -27,6 +28,7 @@ async def _wipe() -> None:
         await session.execute(text("TRUNCATE sudo_actions, audit_logs, archive_batches RESTART IDENTITY CASCADE"))
         await session.execute(delete(ReportLink))
         await session.execute(delete(Report))
+        await session.execute(delete(Period))
         await session.execute(delete(CriteriaRule))
         await session.execute(delete(Criteria))
         await session.execute(delete(RulesVersion))
