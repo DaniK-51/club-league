@@ -119,6 +119,7 @@ model AuditLog {
   action          String   // "created", "status_changed", "points_updated", "sudo_action"
   oldValue        Json?
   newValue        Json?
+  displayData     Json?    // For frontend rendering (title, summary, old/new status, etc.)
   performedById   String
   performedBy     User     @relation(fields: [performedById], references: [id])
   performedByRole String

@@ -18,6 +18,7 @@ def test_compute_hash_is_deterministic() -> None:
         "action": "created",
         "old_value": None,
         "new_value": {"status": "DRAFT"},
+        "display_data": {"title": "Report created", "summary": "Draft created"},
         "performed_by_id": "user-1",
         "performed_by_role": "CLUB_LEADER",
         "performed_at": datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
@@ -37,6 +38,7 @@ def test_compute_hash_changes_with_payload() -> None:
         "action": "created",
         "old_value": None,
         "new_value": {"status": "DRAFT"},
+        "display_data": {"title": "Report created", "summary": "Draft created"},
         "performed_by_id": "user-1",
         "performed_by_role": "CLUB_LEADER",
         "performed_at": datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
@@ -44,4 +46,25 @@ def test_compute_hash_changes_with_payload() -> None:
     }
     h1 = compute_hash(**base)
     h2 = compute_hash(**{**base, "new_value": {"status": "ON_MODERATION"}})
+    assert h1 != h2
+
+
+def test_compute_hash_changes_with_display_data() -> None:
+    base = {
+        "prev_hash": GENESIS_HASH,
+        "entity_type": "report",
+        "entity_id": "abc",
+        "action": "status_changed",
+        "old_value": {"status": "DRAFT"},
+        "new_value": {"status": "ON_MODERATION"},
+        "display_data": {"title": "Status changed", "summary": "DRAFT → ON_MODERATION"},
+        "performed_by_id": "user-1",
+        "performed_by_role": "CLUB_LEADER",
+        "performed_at": datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
+        "reason": None,
+    }
+    h1 = compute_hash(**base)
+    h2 = compute_hash(
+        **{**base, "display_data": {"title": "Status changed", "summary": "DRAFT → APPROVED"}}
+    )
     assert h1 != h2

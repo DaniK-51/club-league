@@ -2,6 +2,10 @@
 
 Every state change MUST go through AuditService.log().
 Chain order is `audit_logs.seq` (DB identity). Genesis prev_hash = 64 zeros.
+
+display_data is a JSONB field specifically for frontend rendering.
+It contains human-readable summary info (old/new status, points, etc.)
+and is included in the hash chain.
 """
 
 from __future__ import annotations
@@ -38,6 +42,7 @@ def compute_hash(
     action: str,
     old_value: dict[str, Any] | None,
     new_value: dict[str, Any] | None,
+    display_data: dict[str, Any] | None,
     performed_by_id: str,
     performed_by_role: str,
     performed_at: datetime,
@@ -50,6 +55,7 @@ def compute_hash(
         "action": action,
         "old_value": old_value,
         "new_value": new_value,
+        "display_data": display_data,
         "performed_by_id": performed_by_id,
         "performed_by_role": performed_by_role,
         "performed_at": performed_at.isoformat(),
@@ -100,6 +106,7 @@ class AuditService:
         performed_by_role: str,
         old_value: dict[str, Any] | None = None,
         new_value: dict[str, Any] | None = None,
+        display_data: dict[str, Any] | None = None,
         reason: str | None = None,
         performed_at: datetime | None = None,
     ) -> AuditLog:
@@ -112,6 +119,7 @@ class AuditService:
             action=action,
             old_value=old_value,
             new_value=new_value,
+            display_data=display_data,
             performed_by_id=performed_by_id,
             performed_by_role=performed_by_role,
             performed_at=performed_at,
@@ -125,6 +133,7 @@ class AuditService:
             action=action,
             old_value=old_value,
             new_value=new_value,
+            display_data=display_data,
             performed_by_id=performed_by_id,
             performed_by_role=performed_by_role,
             performed_at=performed_at,
@@ -135,6 +144,7 @@ class AuditService:
         return entry
 
     async def log_user_created(self, user: User) -> AuditLog:
+        snapshot = user_public_snapshot(user)
         return await self.log(
             entity_type="user",
             entity_id=user.id,
@@ -142,7 +152,13 @@ class AuditService:
             performed_by_id=user.id,
             performed_by_role=user.role.value,
             old_value=None,
-            new_value=user_public_snapshot(user),
+            new_value=snapshot,
+            display_data={
+                "title": "User created",
+                "summary": snapshot.get("role", "GUEST"),
+                "email": snapshot.get("email"),
+                "role": snapshot.get("role"),
+            },
         )
 
     async def log_user_profile_updated(
@@ -151,6 +167,7 @@ class AuditService:
         *,
         old_snapshot: dict[str, Any],
     ) -> AuditLog:
+        snapshot = user_public_snapshot(user)
         return await self.log(
             entity_type="user",
             entity_id=user.id,
@@ -158,7 +175,15 @@ class AuditService:
             performed_by_id=user.id,
             performed_by_role=user.role.value,
             old_value=old_snapshot,
-            new_value=user_public_snapshot(user),
+            new_value=snapshot,
+            display_data={
+                "title": "User updated",
+                "summary": "Profile updated from SSO",
+                "old_email": old_snapshot.get("email"),
+                "new_email": snapshot.get("email"),
+                "old_name": old_snapshot.get("name"),
+                "new_name": snapshot.get("name"),
+            },
         )
 
     async def log_sudo_action(
@@ -171,6 +196,7 @@ class AuditService:
         old_value: dict[str, Any] | None,
         new_value: dict[str, Any] | None,
         reason: str,
+        display_data: dict[str, Any] | None = None,
     ) -> tuple[SudoAction, AuditLog]:
         if not reason or not reason.strip():
             raise ValueError("sudo action requires non-empty reason")
@@ -199,6 +225,7 @@ class AuditService:
             performed_by_role=performed_by.role.value,
             old_value=old_value,
             new_value={**(new_value or {}), "sudo_action": action},
+            display_data=display_data,
             reason=reason.strip(),
             performed_at=now,
         )
@@ -218,6 +245,7 @@ class AuditService:
                 action=row.action,
                 old_value=row.old_value,
                 new_value=row.new_value,
+                display_data=row.display_data,
                 performed_by_id=row.performed_by_id,
                 performed_by_role=row.performed_by_role,
                 performed_at=row.performed_at,

@@ -51,6 +51,7 @@ async def list_audit_logs(
             action=row.action,
             oldValue=row.old_value,
             newValue=row.new_value,
+            displayData=row.display_data,
             performedByName=row.performed_by.name if row.performed_by else "unknown",
             performedByRole=row.performed_by_role,
             performedAt=row.performed_at,

@@ -31,6 +31,7 @@
 | `action` | VARCHAR(64) | Действие (см. раздел 4) |
 | `old_value` | JSONB | Состояние до изменения (nullable) |
 | `new_value` | JSONB | Состояние после изменения (nullable) |
+| `display_data` | JSONB | **Данные для отображения на фронтенде** (nullable) |
 | `performed_by_id` | UUID FK→users | Кто выполнил действие |
 | `performed_by_role` | VARCHAR(32) | Роль на момент действия |
 | `performed_at` | TIMESTAMPTZ | Время действия (UTC) |
@@ -41,7 +42,45 @@
 - `ix_audit_logs_entity` — `(entity_type, entity_id)` для выборки по сущности
 - `ix_audit_logs_performed_at` — для временных запросов
 
-### 2.2. Таблица `sudo_actions`
+### 2.2. Поле `display_data`
+
+JSONB-поле **специально для отображения на фронтенде**. Содержит структурированную информацию о действии: старый/новый статус, баллы, заголовок, summary.
+
+**Включается в хеш-цепочку** — при изменении `display_data` хеш записи меняется.
+
+**Примеры `display_data` по действиям:**
+
+| Action | display_data |
+|--------|--------------|
+| `created` (report) | `{ "title": "Report created", "summary": "Draft created", "status": "DRAFT", "calculated_points": 500 }` |
+| `status_changed` (moderation) | `{ "title": "Status changed", "summary": "ON_MODERATION → APPROVED — Looks good", "old_status": "ON_MODERATION", "new_status": "APPROVED", "final_points": 500 }` |
+| `status_changed` (submit) | `{ "title": "Status changed", "summary": "DRAFT → ON_MODERATION", "old_status": "DRAFT", "new_status": "ON_MODERATION" }` |
+| `points_updated` | `{ "title": "Points updated", "summary": "finalPoints: 500 → 200", "old_points": 500, "new_points": 200 }` |
+| `calculation_updated` | `{ "title": "Calculation method updated", "summary": "auto → manual (350 pts)", "old_method": "auto", "new_method": "manual", "manual_points": 350 }` |
+| `comment` | `{ "title": "Comment", "summary": "Looks good" }` |
+| `deleted` | `{ "title": "Report deleted", "summary": "DRAFT deleted", "old_status": "DRAFT" }` |
+| `sudo_action` (force_status) | `{ "title": "Sudo: force_status", "summary": "DRAFT → COMPLETED", "sudo_action": "force_status", "old_status": "DRAFT", "new_status": "COMPLETED" }` |
+| `sudo_action` (restore) | `{ "title": "Sudo: restore_deleted", "summary": "Report restored", "sudo_action": "restore_deleted" }` |
+| `sudo_action` (override) | `{ "title": "Sudo: override_points", "summary": "finalPoints set to 999", "sudo_action": "override_points", "new_points": 999 }` |
+| `created` (user) | `{ "title": "User created", "summary": "GUEST", "email": "...", "role": "GUEST" }` |
+| `updated` (rule) | `{ "title": "Rule updated", "summary": "C8 tiered config updated", "rule_type": "tiered" }` |
+
+**Использование на фронтенде:**
+```typescript
+// CommentEntry.displayData отдаётся напрямую
+const entry = comments[0];
+if (entry.displayData) {
+  showBadge(entry.displayData.title);
+  showSummary(entry.displayData.summary);
+  if (entry.displayData.old_status && entry.displayData.new_status) {
+    showStatusTransition(entry.displayData.old_status, entry.displayData.new_status);
+  }
+}
+```
+
+**Fallback:** если `display_data` отсутствует (старые записи), `CommentEntry.body` формируется из `reason` / `new_value` через `_build_body()`.
+
+### 2.3. Таблица `sudo_actions`
 
 Отдельный лог для sudo-действий (дублируется в `audit_logs` с `action="sudo_action"`).
 
@@ -57,7 +96,7 @@
 | `reason` | TEXT | **Обязательная** причина |
 | `performed_at` | TIMESTAMPTZ | Время |
 
-### 2.3. Таблица `access_violations`
+### 2.4. Таблица `access_violations`
 
 Лог попыток доступа без прав (403).
 
@@ -86,6 +125,7 @@ hash_n = SHA256(canonical_json({
     action:         "status_changed",
     old_value:      {...},
     new_value:      {...},
+    display_data:   { title, summary, old_status, new_status, ... },
     performed_by_id: "uuid",
     performed_by_role: "MODERATOR",
     performed_at:   "2026-09-17T22:00:00+00:00",
@@ -394,19 +434,21 @@ curl "http://127.0.0.1:8000/api/admin/audit?entityType=report&entityId=uuid&limi
       "action": "created",
       "authorName": "Лидер Клуба",
       "authorRole": "CLUB_LEADER",
-      "body": "status → DRAFT",
+      "body": "Draft created",
       "oldValue": null,
       "newValue": {"status": "DRAFT", ...},
+      "displayData": {"title": "Report created", "summary": "Draft created", "status": "DRAFT"},
       "createdAt": "2026-09-17T20:00:00+00:00"
     },
     {
       "id": "uuid",
-      "action": "comment",
+      "action": "status_changed",
       "authorName": "Тимофей Модератор",
       "authorRole": "MODERATOR",
-      "body": "Looks good",
-      "oldValue": null,
-      "newValue": {"body": "Looks good"},
+      "body": "ON_MODERATION → APPROVED — Looks good",
+      "oldValue": {"status": "ON_MODERATION", ...},
+      "newValue": {"status": "APPROVED", "final_points": 500, "moderation_comment": "Looks good"},
+      "displayData": {"title": "Status changed", "summary": "ON_MODERATION → APPROVED — Looks good", "old_status": "ON_MODERATION", "new_status": "APPROVED", "final_points": 500},
       "createdAt": "2026-09-17T22:00:00+00:00"
     }
   ]
@@ -415,13 +457,13 @@ curl "http://127.0.0.1:8000/api/admin/audit?entityType=report&entityId=uuid&limi
 
 **Как формируется `body`:**
 
-| Action | Источник body |
-|--------|---------------|
-| `comment` | `new_value.body` |
-| `status_changed` | `reason` или `new_value.moderation_comment` или `status → {status}` |
-| `points_updated` | `final_points → {value}` |
-| `calculation_updated` | `calculation → {method} ({pts} pts)` |
-| `created` / `updated` | `status → {status}` или `action` |
+| Приоритет | Источник |
+|-----------|----------|
+| 1 | `display_data.summary` — **основной источник** для новых записей |
+| 2 | `new_value.body` — для `action="comment"` |
+| 3 | `reason` / `new_value.moderation_comment` / `status → {status}` — fallback |
+
+**`displayData`** — структурированные данные для фронтенда (см. раздел 2.2).
 
 ### 6.3. POST /api/reports/:id/comments — Добавить комментарий
 

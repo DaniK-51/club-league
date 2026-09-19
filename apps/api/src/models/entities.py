@@ -227,6 +227,7 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(String(64), nullable=False)
     old_value: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     new_value: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
+    display_data: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     performed_by_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )

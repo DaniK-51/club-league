@@ -6,6 +6,7 @@ Docs: chat is dynamically pulled from audit; comment + status_changed events.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -24,6 +25,7 @@ class CommentEntry(BaseModel):
     body: str
     oldValue: dict | None = None
     newValue: dict | None = None
+    displayData: dict[str, Any] | None = None
     createdAt: datetime
 
 
@@ -44,11 +46,21 @@ _COMMENT_ACTIONS = [
 
 
 def _build_body(row: AuditLog) -> str:
-    """Build human-readable body from audit entry."""
-    # Regular comment: body lives in new_value.body
+    """Build human-readable body from audit entry.
+
+    Priority: display_data.summary > reason > new_value fields > action
+    """
+    # 1. display_data.summary — preferred for rendering
+    if isinstance(row.display_data, dict):
+        summary = row.display_data.get("summary")
+        if summary:
+            return str(summary)
+
+    # 2. Regular comment: body lives in new_value.body
     if row.action == "comment" and isinstance(row.new_value, dict):
         return str(row.new_value.get("body", ""))
 
+    # 3. Fallback: build from reason / new_value
     body_parts: list[str] = []
     if row.reason:
         body_parts.append(row.reason)
@@ -59,7 +71,9 @@ def _build_body(row: AuditLog) -> str:
         if row.action == "calculation_updated":
             method = row.new_value.get("calculation_method", "auto")
             pts = row.new_value.get("manual_points")
-            body_parts.append(f"calculation → {method}" + (f" ({pts} pts)" if pts is not None else ""))
+            body_parts.append(
+                f"calculation → {method}" + (f" ({pts} pts)" if pts is not None else "")
+            )
         elif not body_parts:
             status = row.new_value.get("status")
             if status:
@@ -98,6 +112,7 @@ async def list_report_comments(
                 body=_build_body(row),
                 oldValue=row.old_value,
                 newValue=row.new_value,
+                displayData=row.display_data,
                 createdAt=row.performed_at,
             )
         )
@@ -121,6 +136,10 @@ async def add_report_comment(
         performed_by_role=user.role.value,
         old_value=None,
         new_value={"body": body},
+        display_data={
+            "title": "Comment",
+            "summary": body,
+        },
     )
     await session.commit()
     return CommentEntry(
@@ -131,5 +150,6 @@ async def add_report_comment(
         body=body,
         oldValue=None,
         newValue={"body": body},
+        displayData=entry.display_data,
         createdAt=entry.performed_at,
     )

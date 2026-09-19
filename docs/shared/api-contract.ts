@@ -32,7 +32,22 @@ export interface ReportResponse {
   status: ReportStatus;
   calculatedPoints: number | null;
   finalPoints: number | null;
+  calculationMethod: 'auto' | 'manual'; // NEW
+  manualPoints: number | null;           // NEW
   links: { url: string; domain: string }[];
+  reportData: Record<string, unknown>;   // NEW
+}
+
+export interface CommentEntry {
+  id: string;
+  action: string; // "created" | "updated" | "status_changed" | "points_updated" | "deleted" | "sudo_action" | "comment" | "calculation_updated"
+  authorName: string;
+  authorRole: string;
+  body: string;
+  oldValue: Record<string, unknown> | null;
+  newValue: Record<string, unknown> | null;
+  displayData: Record<string, unknown> | null; // NEW — structured data for rendering
+  createdAt: string;
 }
 
 export interface ApiSuccess<T> { data: T }
@@ -53,6 +68,8 @@ export interface ApiError { error: { code: string; message: string } }
 // PATCH  /api/reports/:id/moderate     -> ModerateReportDTO -> ReportResponse (Только модератор)
 // POST   /api/reports/:id/dispute      -> { comment: string } -> ReportResponse (Лидер оспаривает APPROVED)
 // POST   /api/reports/:id/complete     -> APPROVED → COMPLETED
+// PATCH  /api/reports/:id/calculation  -> SetCalculationDTO -> ReportResponse (модератор, без смены статуса)
+// POST   /api/reports/:id/comments     -> { body: string } -> CommentEntry (leader/moderator)
 // POST   /api/reports/archive?period=  -> batch COMPLETED/CLOSED → ARCHIVED (модератор)
 // GET    /api/rating?semester=2026-fall -> { clubs: { id, name, totalPoints, breakdown }[] }
 // POST   /api/admin/sync/force         -> { semester?: string } -> { status: 'queued' } (Только модератор)
@@ -107,4 +124,9 @@ export enum ErrorCode {
  * - Только для пользователей с role='MODERATOR' и can_sudo=true.
  * - Любое действие с флагом sudo требует обязательного поля `reason` в DTO.
  * - Все sudo-действия логируются в таблицу `sudo_actions` и `audit_logs`.
+ *
+ * AUDIT DISPLAY_DATA:
+ * - Каждая запись audit_logs содержит display_data (JSONB) для фронтенда.
+ * - Пример: { title: "Status changed", summary: "ON_MODERATION → APPROVED", old_status: "...", new_status: "..." }
+ * - CommentEntry.displayData отдаёт это поле напрямую.
  */

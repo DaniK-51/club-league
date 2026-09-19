@@ -138,6 +138,12 @@ async def update_rule(
             "config": dict(rule.config or {}),
             "priority": rule.priority,
         },
+        display_data={
+            "title": "Rule updated",
+            "summary": f"{rule.criteria.code if rule.criteria else 'rule'} {rule.rule_type} config updated",
+            "rule_type": rule.rule_type,
+            "criteria_code": rule.criteria.code if rule.criteria else None,
+        },
     )
     await session.commit()
 

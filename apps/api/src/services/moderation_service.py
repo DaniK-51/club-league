@@ -106,6 +106,10 @@ async def moderate_report(
     report.updated_at = _now()
     await session.flush()
 
+    summary = f"{old_status.value} → {report.status.value}"
+    if comment:
+        summary += f" — {comment}"
+
     await AuditService(session).log(
         entity_type="report",
         entity_id=report.id,
@@ -118,6 +122,13 @@ async def moderate_report(
             "final_points": report.final_points,
             "moderation_comment": report.moderation_comment,
         },
+        display_data={
+            "title": "Status changed",
+            "summary": summary,
+            "old_status": old_status.value,
+            "new_status": report.status.value,
+            "final_points": report.final_points,
+        },
     )
     if payload.finalPoints is not None and payload.finalPoints != report.calculated_points:
         await AuditService(session).log(
@@ -128,6 +139,12 @@ async def moderate_report(
             performed_by_role=user.role.value,
             old_value={"calculated_points": report.calculated_points},
             new_value={"final_points": report.final_points},
+            display_data={
+                "title": "Points updated",
+                "summary": f"finalPoints: {report.calculated_points} → {report.final_points}",
+                "old_points": report.calculated_points,
+                "new_points": report.final_points,
+            },
             reason=comment or None,
         )
 
@@ -166,6 +183,10 @@ async def dispute_report(
     report.updated_at = _now()
     await session.flush()
 
+    summary = f"{old_status.value} → {report.status.value}"
+    if comment:
+        summary += f" — {comment}"
+
     await AuditService(session).log(
         entity_type="report",
         entity_id=report.id,
@@ -174,6 +195,12 @@ async def dispute_report(
         performed_by_role=user.role.value,
         old_value={"status": old_status.value},
         new_value={"status": report.status.value},
+        display_data={
+            "title": "Status changed",
+            "summary": summary,
+            "old_status": old_status.value,
+            "new_status": report.status.value,
+        },
         reason=comment,
     )
     await session.commit()
@@ -211,6 +238,12 @@ async def complete_report(
         performed_by_role=user.role.value,
         old_value={"status": old_status.value},
         new_value={"status": report.status.value},
+        display_data={
+            "title": "Status changed",
+            "summary": f"{old_status.value} → {report.status.value}",
+            "old_status": old_status.value,
+            "new_status": report.status.value,
+        },
     )
     await session.commit()
 

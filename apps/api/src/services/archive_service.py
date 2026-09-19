@@ -82,6 +82,13 @@ async def archive_period(
             performed_by_role=UserRole.MODERATOR.value,
             old_value={"status": old_status.value},
             new_value={"status": report.status.value, "archive_batch_id": batch.id},
+            display_data={
+                "title": "Status changed",
+                "summary": f"{old_status.value} → {report.status.value}",
+                "old_status": old_status.value,
+                "new_status": report.status.value,
+                "period": target_period,
+            },
             reason=f"archive period {target_period}",
         )
 
@@ -129,6 +136,13 @@ async def complete_approved_if_stale(
             performed_by_role="MODERATOR",
             old_value={"status": old_status.value},
             new_value={"status": report.status.value},
+            display_data={
+                "title": "Auto-completed",
+                "summary": f"{old_status.value} → {report.status.value} (auto after {older_than_days}d)",
+                "old_status": old_status.value,
+                "new_status": report.status.value,
+                "auto": True,
+            },
             reason=f"auto-complete after {older_than_days}d",
         )
         completed += 1

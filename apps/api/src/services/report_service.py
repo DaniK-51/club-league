@@ -197,6 +197,13 @@ async def create_report(
             "calculated_points": points,
             "is_overdue": is_overdue(activity_date),
         },
+        display_data={
+            "title": "Report created",
+            "summary": "Draft created",
+            "status": report.status.value,
+            "calculated_points": points,
+            "is_overdue": is_overdue(activity_date),
+        },
     )
     await session.commit()
     loaded = await _get_report(session, report.id)
@@ -305,6 +312,12 @@ async def update_report(
             "report_data": dict(report.report_data or {}),
             "calculated_points": report.calculated_points,
         },
+        display_data={
+            "title": "Report updated",
+            "summary": "reportData changed",
+            "old_calculated_points": old_snapshot.get("calculated_points"),
+            "new_calculated_points": report.calculated_points,
+        },
     )
     await session.commit()
     loaded = await _get_report(session, report.id)
@@ -355,6 +368,14 @@ async def set_calculation(
             "calculation_method": report.calculation_method,
             "manual_points": report.manual_points,
         },
+        display_data={
+            "title": "Calculation method updated",
+            "summary": f"{old_snapshot.get('calculation_method', 'auto')} → {report.calculation_method}"
+            + (f" ({report.manual_points} pts)" if report.manual_points is not None else ""),
+            "old_method": old_snapshot.get("calculation_method"),
+            "new_method": report.calculation_method,
+            "manual_points": report.manual_points,
+        },
     )
     await session.commit()
     loaded = await _get_report(session, report.id)
@@ -391,6 +412,12 @@ async def submit_report(session: AsyncSession, *, user: User, report_id: str) ->
         performed_by_role=user.role.value,
         old_value={"status": old_status.value},
         new_value={"status": report.status.value},
+        display_data={
+            "title": "Status changed",
+            "summary": f"{old_status.value} → {report.status.value}",
+            "old_status": old_status.value,
+            "new_status": report.status.value,
+        },
     )
     await session.commit()
     loaded = await _get_report(session, report.id)
@@ -428,6 +455,11 @@ async def soft_delete_report(session: AsyncSession, *, user: User, report_id: st
         performed_by_role=user.role.value,
         old_value={"status": old_status.value},
         new_value={"is_deleted": True},
+        display_data={
+            "title": "Report deleted",
+            "summary": f"{old_status.value} deleted",
+            "old_status": old_status.value,
+        },
     )
     await session.commit()
 

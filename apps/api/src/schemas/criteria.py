@@ -53,6 +53,7 @@ class AuditLogOut(BaseModel):
     action: str
     oldValue: dict[str, Any] | None
     newValue: dict[str, Any] | None
+    displayData: dict[str, Any] | None = None
     performedByName: str
     performedByRole: str
     performedAt: datetime

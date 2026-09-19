@@ -100,6 +100,13 @@ async def run_sudo_action(
         report.updated_at = _now()
         new_snapshot = {"status": new_status.value}
         sudo_action = "force_status"
+        display_data = {
+            "title": f"Sudo: {sudo_action}",
+            "summary": f"{old_status.value} → {new_status.value}",
+            "sudo_action": sudo_action,
+            "old_status": old_status.value,
+            "new_status": new_status.value,
+        }
 
     elif payload.action == "restore_deleted":
         report = await _load_report(
@@ -116,6 +123,11 @@ async def run_sudo_action(
         report.updated_at = _now()
         new_snapshot = {"is_deleted": False}
         sudo_action = "restore_deleted"
+        display_data = {
+            "title": f"Sudo: {sudo_action}",
+            "summary": "Report restored",
+            "sudo_action": sudo_action,
+        }
 
     elif payload.action == "override_points":
         report = await _load_report(session, payload.targetReportId)
@@ -128,6 +140,12 @@ async def run_sudo_action(
         report.updated_at = _now()
         new_snapshot = {"final_points": points}
         sudo_action = "override_points"
+        display_data = {
+            "title": f"Sudo: {sudo_action}",
+            "summary": f"finalPoints set to {points}",
+            "sudo_action": sudo_action,
+            "new_points": points,
+        }
 
     else:  # pragma: no cover - Literal prevents this
         raise SudoValidationError(f"unknown action {payload.action}")
@@ -141,6 +159,7 @@ async def run_sudo_action(
         old_value=old_snapshot,
         new_value=new_snapshot,
         reason=reason,
+        display_data=display_data,
     )
     await session.commit()
 
