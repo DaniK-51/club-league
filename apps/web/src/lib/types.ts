@@ -121,6 +121,7 @@ export interface CommentEntry {
   body: string
   oldValue: Record<string, unknown> | null
   newValue: Record<string, unknown> | null
+  displayData: Record<string, unknown> | null
   createdAt: string
 }
 

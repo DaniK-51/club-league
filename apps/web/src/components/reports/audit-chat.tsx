@@ -124,98 +124,99 @@ function TimelineItem({ entry }: { entry: CommentEntry }) {
   const isSystem = SYSTEM_ACTIONS.has(entry.action)
 
   if (isSystem) {
-    // If system event has a message, show status change + reason separately
-    const hasReason =
-      !!entry.body &&
-      entry.body !== entry.action &&
-      !entry.body.startsWith('status →') &&
-      !entry.body.startsWith('final_points →')
-
-    return (
-      <>
-        <SystemEvent entry={entry} hideBody={hasReason} />
-        {hasReason && <ReasonBlock entry={entry} />}
-      </>
-    )
+    return <SystemEvent entry={entry} />
   }
   return <CommentCard entry={entry} />
 }
 
-// GitHub-style compact system event
-function SystemEvent({ entry, hideBody }: { entry: CommentEntry; hideBody?: boolean }) {
+// GitHub-style compact system event using displayData
+function SystemEvent({ entry }: { entry: CommentEntry }) {
   const { t } = useTranslation()
   const icon = ACTION_ICONS[entry.action] ?? ACTION_ICONS.comment
+  const display = entry.displayData ?? {}
 
-  // Parse body into human-readable format
-  const getDetail = (): string | null => {
-    const body = entry.body
-    if (!body || body === entry.action) return null
-
-    // Status change: "status → APPROVED" or "ON_MODERATION → APPROVED"
-    const statusMatch = body.match(/(?:status\s*→\s*)?([A-Z_]+)\s*→\s*([A-Z_]+)/)
-    if (statusMatch?.[1] && statusMatch[2]) {
-      const from = t(`report.status.${statusMatch[1]}` as string, statusMatch[1])
-      const to = t(`report.status.${statusMatch[2]}` as string, statusMatch[2])
-      return `${from} → ${to}`
+  // Get detail text from displayData
+  const getDetail = (): { text: string; hasReason: boolean; reason: string | null } => {
+    // Status change: show old → new
+    if (display.old_status && display.new_status) {
+      const from = t(`report.status.${display.old_status}` as string, String(display.old_status))
+      const to = t(`report.status.${display.new_status}` as string, String(display.new_status))
+      return {
+        text: `${from} → ${to}`,
+        hasReason: !!display.moderation_comment,
+        reason: display.moderation_comment ? String(display.moderation_comment) : null,
+      }
     }
 
-    // Single status: "status → APPROVED"
-    const singleStatus = body.match(/status\s*→\s*([A-Z_]+)/)
-    if (singleStatus?.[1]) {
-      return t(`report.status.${singleStatus[1]}` as string, singleStatus[1])
-    }
-
-    // Points: "final_points → 350"
-    const pointsMatch = body.match(/(?:final|calculated)_points\s*→\s*(\d+)/)
-    if (pointsMatch?.[1]) {
-      return `${pointsMatch[1]} ${t('report.pointsUnit')}`
+    // Points update
+    if (display.old_points !== undefined || display.new_points !== undefined) {
+      const newPts = display.new_points ?? display.old_points
+      return {
+        text: `${newPts} ${t('report.pointsUnit')}`,
+        hasReason: false,
+        reason: null,
+      }
     }
 
     // Calculation method
-    const calcMatch = body.match(/calculation_method\s*→\s*(\w+)/)
-    if (calcMatch?.[1]) {
-      return t(`moderation.calcModes.${calcMatch[1]}` as string, calcMatch[1])
+    if (display.old_method || display.new_method) {
+      const method = display.new_method ?? display.old_method
+      return {
+        text: t(`moderation.calcModes.${method}` as string, String(method)),
+        hasReason: false,
+        reason: null,
+      }
     }
 
-    return body
+    // Comment summary
+    if (display.summary) {
+      return {
+        text: '',
+        hasReason: true,
+        reason: String(display.summary),
+      }
+    }
+
+    // Fallback to body
+    return {
+      text: entry.body && entry.body !== entry.action ? entry.body : '',
+      hasReason: false,
+      reason: null,
+    }
   }
 
-  const detail = getDetail()
+  const { text, hasReason, reason } = getDetail()
 
   return (
-    <div className="flex items-center gap-2 py-2">
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-        {icon}
-      </span>
-      <div className="flex min-w-0 flex-1 items-baseline gap-2 text-sm">
-        <span className="font-medium">{entry.authorName}</span>
-        <span className="text-muted-foreground">
-          {t(`moderation.actions.${entry.action}`, entry.action)}
+    <>
+      <div className="flex items-center gap-2 py-2">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+          {icon}
         </span>
-        {!hideBody && detail && (
+        <div className="flex min-w-0 flex-1 items-baseline gap-2 text-sm">
+          <span className="font-medium">{entry.authorName}</span>
           <span className="text-muted-foreground">
-            {detail}
+            {t(`moderation.actions.${entry.action}`, entry.action)}
           </span>
-        )}
+          {text && (
+            <span className="text-muted-foreground">{text}</span>
+          )}
+        </div>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {formatDateTime(entry.createdAt)}
+        </span>
       </div>
-      <span className="shrink-0 text-xs text-muted-foreground">
-        {formatDateTime(entry.createdAt)}
-      </span>
-    </div>
-  )
-}
 
-// Reason block — shown below status change
-function ReasonBlock({ entry }: { entry: CommentEntry }) {
-  const { t } = useTranslation()
-
-  return (
-    <div className="mb-2 ml-7 rounded-md border-l-2 border-muted bg-muted/30 px-3 py-2">
-      <div className="mb-1 text-xs text-muted-foreground">
-        {t('moderation.reasonLabel')}
-      </div>
-      <p className="text-sm">{entry.body}</p>
-    </div>
+      {/* Reason block — separate from status change */}
+      {hasReason && reason && (
+        <div className="mb-2 ml-7 rounded-md border-l-2 border-muted bg-muted/30 px-3 py-2">
+          <div className="mb-1 text-xs text-muted-foreground">
+            {t('moderation.reasonLabel')}
+          </div>
+          <p className="text-sm">{reason}</p>
+        </div>
+      )}
+    </>
   )
 }
 
