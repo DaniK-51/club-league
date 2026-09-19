@@ -122,231 +122,235 @@ function TimelineItem({ entry }: { entry: CommentEntry }) {
   return isSystem ? <SystemEvent entry={entry} /> : <CommentCard entry={entry} />
 }
 
+/**
+ * System event with caption + details pattern.
+ * caption — single line: "Author did something — key info"
+ * details — block below with structured content (not always "reason")
+ */
 function SystemEvent({ entry }: { entry: CommentEntry }) {
   const { t } = useTranslation()
   const icon = ACTION_ICONS[entry.action] ?? ACTION_ICONS.comment
   const dd = (entry.displayData ?? {}) as Record<string, unknown>
 
-  // Helper to get criteria label
-  const getCriteriaLabel = (): string | null => {
-    const code = dd.criteriaCode ? String(dd.criteriaCode) : null
-    const name = dd.criteriaName ? String(dd.criteriaName) : null
-    if (code && name) return `${code} — ${name}`
-    return code
-  }
-
-  // Helper to format links
-  const formatLinks = (links: unknown): string | null => {
-    if (!Array.isArray(links) || links.length === 0) return null
-    return links
-      .map((l) => {
-        if (l && typeof l === 'object' && 'domain' in l) return String(l.domain)
-        return null
-      })
-      .filter(Boolean)
-      .join(', ')
-  }
-
-  // Helper to format reportData params
-  const formatParams = (data: unknown): string | null => {
-    if (!data || typeof data !== 'object') return null
-    const entries = Object.entries(data as Record<string, unknown>)
-      .filter(([, v]) => v != null && v !== '')
-    if (entries.length === 0) return null
-    return entries
-      .map(([k, v]) => `${k}: ${String(v)}`)
-      .join(', ')
-  }
-
-  // Render detail based on action type
-  const renderDetail = (): { detail: React.ReactNode; reason: string | null } => {
-    const criteriaLabel = getCriteriaLabel()
-
-    switch (entry.action) {
-      case 'created': {
-        const pts = dd.calculatedPoints
-        const params = formatParams(dd.reportData)
-        const links = formatLinks(dd.links)
-        return {
-          detail: (
-            <span className="text-muted-foreground">
-              {criteriaLabel && <> — {criteriaLabel}</>}
-              {typeof pts === 'number' && <> — {pts} {t('report.pointsUnit')}</>}
-              {params && <> — {params}</>}
-              {links && <> — {links}</>}
-            </span>
-          ),
-          reason: null,
-        }
-      }
-
-      case 'status_changed': {
-        const oldS = dd.oldStatus ? String(dd.oldStatus) : null
-        const newS = dd.newStatus ? String(dd.newStatus) : null
-        const calcPts = dd.calculatedPoints
-        const finPts = dd.finalPoints
-        const calcMethod = dd.calculationMethod ? String(dd.calculationMethod) : null
-        const manualPts = dd.manualPoints
-        const modComment = dd.moderationComment ? String(dd.moderationComment) : null
-
-        if (!oldS || !newS) {
-          return { detail: criteriaLabel ? <span className="text-muted-foreground"> — {criteriaLabel}</span> : null, reason: null }
-        }
-
-        const fromLabel = t(`report.status.${oldS}` as string, oldS)
-        const toLabel = t(`report.status.${newS}` as string, newS)
-
-        return {
-          detail: (
-            <span className="text-muted-foreground">
-              {criteriaLabel && <> — {criteriaLabel}</>}
-              {' — '}
-              <span className="font-medium">{fromLabel} → {toLabel}</span>
-              {typeof calcPts === 'number' && (
-                <> — {t('moderation.calculated')}: {calcPts}</>
-              )}
-              {typeof finPts === 'number' && (
-                <> — {t('moderation.final')}: {finPts}</>
-              )}
-              {calcMethod === 'manual' && typeof manualPts === 'number' && (
-                <> — {t('moderation.calcModes.manual')}: {manualPts}</>
-              )}
-            </span>
-          ),
-          reason: modComment,
-        }
-      }
-
-      case 'points_updated': {
-        const oldP = dd.oldPoints != null ? String(dd.oldPoints) : '—'
-        const newP = dd.newPoints != null ? String(dd.newPoints) : '—'
-        const calcMethod = dd.calculationMethod ? String(dd.calculationMethod) : null
-        const modComment = dd.moderationComment ? String(dd.moderationComment) : null
-        return {
-          detail: (
-            <span className="text-muted-foreground">
-              {criteriaLabel && <> — {criteriaLabel}</>}
-              {' — '}
-              <span className="font-medium">
-                {oldP} → {newP} {t('report.pointsUnit')}
-              </span>
-              {calcMethod && <> — {t(`moderation.calcModes.${calcMethod}` as string, calcMethod)}</>}
-            </span>
-          ),
-          reason: modComment,
-        }
-      }
-
-      case 'calculation_updated': {
-        const oldM = dd.oldMethod ? String(dd.oldMethod) : null
-        const newM = dd.newMethod ? String(dd.newMethod) : null
-        const manualPts = dd.manualPoints != null ? String(dd.manualPoints) : null
-        const reason = dd.reason ? String(dd.reason) : null
-
-        if (!oldM && !newM) {
-          return { detail: criteriaLabel ? <span className="text-muted-foreground"> — {criteriaLabel}</span> : null, reason: null }
-        }
-
-        const fromM = oldM ? t(`moderation.calcModes.${oldM}` as string, oldM) : '—'
-        const toM = newM ? t(`moderation.calcModes.${newM}` as string, newM) : '—'
-
-        return {
-          detail: (
-            <span className="text-muted-foreground">
-              {criteriaLabel && <> — {criteriaLabel}</>}
-              {' — '}
-              <span className="font-medium">
-                {fromM} → {toM}
-              </span>
-              {newM === 'manual' && manualPts != null && (
-                <> ({manualPts} {t('report.pointsUnit')})</>
-              )}
-            </span>
-          ),
-          reason,
-        }
-      }
-
-      case 'updated': {
-        const oldPts = dd.oldCalculatedPoints != null ? String(dd.oldCalculatedPoints) : null
-        const newPts = dd.newCalculatedPoints != null ? String(dd.newCalculatedPoints) : null
-        const params = formatParams(dd.reportData)
-        return {
-          detail: (
-            <span className="text-muted-foreground">
-              {criteriaLabel && <> — {criteriaLabel}</>}
-              {oldPts && newPts && (
-                <> — {t('report.pointsUnit')}: {oldPts} → {newPts}</>
-              )}
-              {params && <> — {params}</>}
-            </span>
-          ),
-          reason: null,
-        }
-      }
-
-      case 'deleted': {
-        const params = formatParams(dd.reportData)
-        return {
-          detail: (
-            <span className="text-muted-foreground">
-              {criteriaLabel && <> — {criteriaLabel}</>}
-              {params && <> — {params}</>}
-            </span>
-          ),
-          reason: null,
-        }
-      }
-
-      case 'sudo_action': {
-        return {
-          detail: null,
-          reason: entry.body && entry.body !== entry.action ? entry.body : null,
-        }
-      }
-
-      default: {
-        return {
-          detail: criteriaLabel ? (
-            <span className="text-muted-foreground"> — {criteriaLabel}</span>
-          ) : entry.body && entry.body !== entry.action ? (
-            <span className="text-muted-foreground"> — {entry.body}</span>
-          ) : null,
-          reason: null,
-        }
-      }
-    }
-  }
-
-  const { detail, reason } = renderDetail()
-  const actionLabel = t(`audit.actions.${entry.action}`, entry.action)
+  const { caption, details } = renderSystemEvent(entry.action, dd, t, entry.body)
 
   return (
     <>
+      {/* Caption line */}
       <div className="flex items-center gap-2 py-2">
         <span className="flex h-5 w-5 shrink-0 items-center justify-center">
           {icon}
         </span>
-        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
+        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 text-sm">
           <span className="font-medium">{entry.authorName}</span>
-          <span className="text-muted-foreground">{actionLabel}</span>
-          {detail}
+          <span className="text-muted-foreground">{caption}</span>
         </div>
         <span className="shrink-0 text-xs text-muted-foreground">
           {formatDateTime(entry.createdAt)}
         </span>
       </div>
 
-      {reason && (
-        <div className="mb-2 ml-7 rounded-md border-l-2 border-muted bg-muted/30 px-3 py-2">
-          <div className="mb-1 text-xs text-muted-foreground">
-            {t('moderation.reasonLabel')}
-          </div>
-          <p className="text-sm">{reason}</p>
+      {/* Details block */}
+      {details.length > 0 && (
+        <div className="mb-2 ml-7 space-y-1 rounded-md border-l-2 border-muted bg-muted/20 px-3 py-2">
+          {details.map((d, i) => (
+            <DetailRow key={i} {...d} />
+          ))}
         </div>
       )}
     </>
   )
+}
+
+interface DetailRow {
+  label?: string
+  value: string
+  mono?: boolean
+}
+
+function DetailRow({ label, value, mono }: DetailRow) {
+  return (
+    <div className="flex items-baseline gap-2 text-sm">
+      {label && (
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {label}
+        </span>
+      )}
+      <span className={cn('min-w-0', mono && 'font-mono text-xs')}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
+type TranslateFn = ReturnType<typeof useTranslation>['t']
+
+function renderSystemEvent(
+  action: string,
+  dd: Record<string, unknown>,
+  t: TranslateFn,
+  body?: string
+): { caption: string; details: DetailRow[] } {
+  const details: DetailRow[] = []
+
+  const str = (v: unknown): string | null =>
+    v != null && v !== '' ? String(v) : null
+
+  const criteriaCode = str(dd.criteriaCode)
+  const criteriaName = str(dd.criteriaName)
+  const criteriaLabel = criteriaCode
+    ? criteriaName
+      ? `${criteriaCode} — ${criteriaName}`
+      : criteriaCode
+    : null
+
+  const statusLabel = (v: unknown): string | null => {
+    const s = str(v)
+    return s ? t(`report.status.${s}`, s) : null
+  }
+
+  const methodLabel = (v: unknown): string | null => {
+    const m = str(v)
+    return m ? t(`moderation.calcModes.${m}`, m) : null
+  }
+
+  const points = (v: unknown): string | null =>
+    v != null ? `${String(v)} ${t('report.pointsUnit')}` : null
+
+  const actionLabel = t(`audit.actions.${action}`, action)
+
+  switch (action) {
+    case 'created': {
+      const caption = criteriaLabel
+        ? `${actionLabel} — ${criteriaLabel}`
+        : actionLabel
+      const pts = points(dd.calculatedPoints)
+      if (pts) details.push({ label: t('report.points'), value: pts })
+      const reportData = dd.reportData
+      if (reportData && typeof reportData === 'object') {
+        const entries = Object.entries(reportData as Record<string, unknown>)
+          .filter(([, v]) => v != null && v !== '')
+        if (entries.length > 0) {
+          details.push({
+            label: t('report.parameters'),
+            value: entries.map(([k, v]) => `${k}: ${String(v)}`).join(', '),
+          })
+        }
+      }
+      const links = dd.links
+      if (Array.isArray(links) && links.length > 0) {
+        details.push({
+          label: t('report.links'),
+          value: links
+            .map((l) => (l && typeof l === 'object' && 'domain' in l ? String(l.domain) : null))
+            .filter(Boolean)
+            .join(', '),
+        })
+      }
+      return { caption, details }
+    }
+
+    case 'status_changed': {
+      const oldS = statusLabel(dd.oldStatus)
+      const newS = statusLabel(dd.newStatus)
+      const statusPart = oldS && newS ? `${oldS} → ${newS}` : null
+      const caption = statusPart
+        ? `${actionLabel} — ${statusPart}`
+        : actionLabel
+      if (criteriaLabel) {
+        details.push({ label: t('report.criteria'), value: criteriaLabel })
+      }
+      const calcPts = points(dd.calculatedPoints)
+      if (calcPts) details.push({ label: t('moderation.calculated'), value: calcPts })
+      const finPts = points(dd.finalPoints)
+      if (finPts) details.push({ label: t('moderation.final'), value: finPts })
+      const method = methodLabel(dd.calculationMethod)
+      const manualPts = points(dd.manualPoints)
+      if (method === t('moderation.calcModes.manual') && manualPts) {
+        details.push({ label: t('moderation.manualPoints'), value: manualPts })
+      }
+      const modComment = str(dd.moderationComment)
+      if (modComment) details.push({ label: t('moderation.reasonLabel'), value: modComment })
+      return { caption, details }
+    }
+
+    case 'points_updated': {
+      const oldP = str(dd.oldPoints) ?? '—'
+      const newP = str(dd.newPoints) ?? '—'
+      const caption = `${actionLabel} — ${oldP} → ${newP} ${t('report.pointsUnit')}`
+      if (criteriaLabel) {
+        details.push({ label: t('report.criteria'), value: criteriaLabel })
+      }
+      const method = methodLabel(dd.calculationMethod)
+      if (method) details.push({ label: t('moderation.calcMethod'), value: method })
+      const modComment = str(dd.moderationComment)
+      if (modComment) details.push({ label: t('moderation.reasonLabel'), value: modComment })
+      return { caption, details }
+    }
+
+    case 'calculation_updated': {
+      const oldM = methodLabel(dd.oldMethod)
+      const newM = methodLabel(dd.newMethod)
+      const methodPart = oldM && newM ? `${oldM} → ${newM}` : newM ?? oldM
+      const manualPts = points(dd.manualPoints)
+      const caption = methodPart
+        ? `${actionLabel} — ${methodPart}${manualPts ? ` (${manualPts})` : ''}`
+        : actionLabel
+      if (criteriaLabel) {
+        details.push({ label: t('report.criteria'), value: criteriaLabel })
+      }
+      const reason = str(dd.reason)
+      if (reason) details.push({ label: t('moderation.reasonLabel'), value: reason })
+      return { caption, details }
+    }
+
+    case 'updated': {
+      const oldPts = str(dd.oldCalculatedPoints)
+      const newPts = str(dd.newCalculatedPoints)
+      const ptsPart = oldPts && newPts
+        ? `${t('report.points')}: ${oldPts} → ${newPts}`
+        : null
+      const caption = ptsPart
+        ? `${actionLabel} — ${ptsPart}`
+        : actionLabel
+      if (criteriaLabel) {
+        details.push({ label: t('report.criteria'), value: criteriaLabel })
+      }
+      const reportData = dd.reportData
+      if (reportData && typeof reportData === 'object') {
+        const entries = Object.entries(reportData as Record<string, unknown>)
+          .filter(([, v]) => v != null && v !== '')
+        if (entries.length > 0) {
+          details.push({
+            label: t('report.parameters'),
+            value: entries.map(([k, v]) => `${k}: ${String(v)}`).join(', '),
+          })
+        }
+      }
+      return { caption, details }
+    }
+
+    case 'deleted': {
+      const caption = criteriaLabel
+        ? `${actionLabel} — ${criteriaLabel}`
+        : actionLabel
+      return { caption, details }
+    }
+
+    case 'sudo_action': {
+      const caption = actionLabel
+      const reason = str(dd.reason) ?? (body && body !== action ? body : null)
+      if (reason) details.push({ label: t('moderation.reasonLabel'), value: reason })
+      return { caption, details }
+    }
+
+    default: {
+      const caption = criteriaLabel
+        ? `${actionLabel} — ${criteriaLabel}`
+        : actionLabel
+      return { caption, details }
+    }
+  }
 }
 
 function CommentCard({ entry }: { entry: CommentEntry }) {
