@@ -17,7 +17,6 @@ import { useAuthStore } from '@/store/auth.store'
 import { cn } from '@/lib/utils'
 import type { CommentEntry } from '@/lib/types'
 
-// System events — compact GitHub-style timeline items
 const SYSTEM_ACTIONS = new Set([
   'created',
   'status_changed',
@@ -65,7 +64,6 @@ export function AuditChat({ reportId }: AuditChatProps) {
 
   return (
     <div>
-      {/* Timeline */}
       <div className="relative">
         <div className="space-y-0">
           {comments?.map((entry) => (
@@ -74,7 +72,6 @@ export function AuditChat({ reportId }: AuditChatProps) {
         </div>
       </div>
 
-      {/* Comment input — GitHub style */}
       {isAuthenticated && (
         <div className="mt-6 rounded-md border">
           <div className="border-b bg-muted/50 px-4 py-2">
@@ -122,70 +119,148 @@ function Avatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'md' }) {
 
 function TimelineItem({ entry }: { entry: CommentEntry }) {
   const isSystem = SYSTEM_ACTIONS.has(entry.action)
-
-  if (isSystem) {
-    return <SystemEvent entry={entry} />
-  }
-  return <CommentCard entry={entry} />
+  return isSystem ? <SystemEvent entry={entry} /> : <CommentCard entry={entry} />
 }
 
-// GitHub-style compact system event using displayData
 function SystemEvent({ entry }: { entry: CommentEntry }) {
   const { t } = useTranslation()
   const icon = ACTION_ICONS[entry.action] ?? ACTION_ICONS.comment
-  const display = entry.displayData ?? {}
+  const dd = (entry.displayData ?? {}) as Record<string, unknown>
 
-  // Get detail text from displayData
-  const getDetail = (): { text: string; hasReason: boolean; reason: string | null } => {
-    // Status change: show old → new
-    if (display.old_status && display.new_status) {
-      const from = t(`report.status.${display.old_status}` as string, String(display.old_status))
-      const to = t(`report.status.${display.new_status}` as string, String(display.new_status))
-      return {
-        text: `${from} → ${to}`,
-        hasReason: !!display.moderation_comment,
-        reason: display.moderation_comment ? String(display.moderation_comment) : null,
+  // Render different detail based on action type
+  const renderDetail = (): { detail: React.ReactNode; reason: string | null } => {
+    switch (entry.action) {
+      case 'created': {
+        const pts = dd.calculated_points
+        return {
+          detail: (
+            <>
+              {typeof pts === 'number' && pts > 0 && (
+                <span className="text-muted-foreground">
+                  — {pts} {t('report.pointsUnit')}
+                </span>
+              )}
+            </>
+          ),
+          reason: null,
+        }
       }
-    }
 
-    // Points update
-    if (display.old_points !== undefined || display.new_points !== undefined) {
-      const newPts = display.new_points ?? display.old_points
-      return {
-        text: `${newPts} ${t('report.pointsUnit')}`,
-        hasReason: false,
-        reason: null,
+      case 'status_changed': {
+        const oldS = dd.old_status ? String(dd.old_status) : null
+        const newS = dd.new_status ? String(dd.new_status) : null
+        const finalPts = dd.final_points
+        const modComment = dd.moderation_comment
+        const reason = entry.oldValue && typeof entry.oldValue === 'object'
+          ? String((entry.oldValue as Record<string, unknown>).reason ?? '')
+          : null
+
+        if (!oldS || !newS) {
+          return { detail: null, reason: null }
+        }
+
+        const fromLabel = t(`report.status.${oldS}` as string, oldS)
+        const toLabel = t(`report.status.${newS}` as string, newS)
+
+        return {
+          detail: (
+            <>
+              <span className="font-medium">
+                {fromLabel} → {toLabel}
+              </span>
+              {typeof finalPts === 'number' && (
+                <span className="ml-2 text-muted-foreground">
+                  ({finalPts} {t('report.pointsUnit')})
+                </span>
+              )}
+            </>
+          ),
+          reason: (modComment ? String(modComment) : null) ?? (reason || null),
+        }
       }
-    }
 
-    // Calculation method
-    if (display.old_method || display.new_method) {
-      const method = display.new_method ?? display.old_method
-      return {
-        text: t(`moderation.calcModes.${method}` as string, String(method)),
-        hasReason: false,
-        reason: null,
+      case 'points_updated': {
+        const oldP = dd.old_points != null ? String(dd.old_points) : '—'
+        const newP = dd.new_points != null ? String(dd.new_points) : '—'
+        return {
+          detail: (
+            <span className="font-medium">
+              {oldP} → {newP} {t('report.pointsUnit')}
+            </span>
+          ),
+          reason: null,
+        }
       }
-    }
 
-    // Comment summary
-    if (display.summary) {
-      return {
-        text: '',
-        hasReason: true,
-        reason: String(display.summary),
+      case 'calculation_updated': {
+        const oldM = dd.old_method ? String(dd.old_method) : null
+        const newM = dd.new_method ? String(dd.new_method) : null
+        const manualPts = dd.manual_points != null ? String(dd.manual_points) : null
+        if (!oldM && !newM) return { detail: null, reason: null }
+
+        const fromM = oldM ? t(`moderation.calcModes.${oldM}` as string, oldM) : '—'
+        const toM = newM ? t(`moderation.calcModes.${newM}` as string, newM) : '—'
+
+        return {
+          detail: (
+            <>
+              <span className="font-medium">
+                {fromM} → {toM}
+              </span>
+              {newM === 'manual' && manualPts != null && (
+                <span className="ml-2 text-muted-foreground">
+                  ({manualPts} {t('report.pointsUnit')})
+                </span>
+              )}
+            </>
+          ),
+          reason: null,
+        }
       }
-    }
 
-    // Fallback to body
-    return {
-      text: entry.body && entry.body !== entry.action ? entry.body : '',
-      hasReason: false,
-      reason: null,
+      case 'updated': {
+        const oldPts = dd.old_calculated_points != null ? String(dd.old_calculated_points) : null
+        const newPts = dd.new_calculated_points != null ? String(dd.new_calculated_points) : null
+        if (oldPts || newPts) {
+          return {
+            detail: (
+              <span className="text-muted-foreground">
+                — {t('report.pointsUnit')}: {oldPts ?? '—'} → {newPts ?? '—'}
+              </span>
+            ),
+            reason: null,
+          }
+        }
+        return {
+          detail: <span className="text-muted-foreground">— {t('report.paramsUpdated')}</span>,
+          reason: null,
+        }
+      }
+
+      case 'deleted':
+        return { detail: null, reason: null }
+
+      case 'sudo_action': {
+        return {
+          detail: null,
+          reason: entry.body && entry.body !== entry.action ? entry.body : null,
+        }
+      }
+
+      default:
+        return {
+          detail: entry.body && entry.body !== entry.action
+            ? <span className="text-muted-foreground">— {entry.body}</span>
+            : null,
+          reason: null,
+        }
     }
   }
 
-  const { text, hasReason, reason } = getDetail()
+  const { detail, reason } = renderDetail()
+
+  // Action label — short description
+  const actionLabel = t(`audit.actions.${entry.action}`, entry.action)
 
   return (
     <>
@@ -193,22 +268,18 @@ function SystemEvent({ entry }: { entry: CommentEntry }) {
         <span className="flex h-5 w-5 shrink-0 items-center justify-center">
           {icon}
         </span>
-        <div className="flex min-w-0 flex-1 items-baseline gap-2 text-sm">
+        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
           <span className="font-medium">{entry.authorName}</span>
-          <span className="text-muted-foreground">
-            {t(`moderation.actions.${entry.action}`, entry.action)}
-          </span>
-          {text && (
-            <span className="text-muted-foreground">{text}</span>
-          )}
+          <span className="text-muted-foreground">{actionLabel}</span>
+          {detail}
         </div>
         <span className="shrink-0 text-xs text-muted-foreground">
           {formatDateTime(entry.createdAt)}
         </span>
       </div>
 
-      {/* Reason block — separate from status change */}
-      {hasReason && reason && (
+      {/* Reason block — separate below */}
+      {reason && (
         <div className="mb-2 ml-7 rounded-md border-l-2 border-muted bg-muted/30 px-3 py-2">
           <div className="mb-1 text-xs text-muted-foreground">
             {t('moderation.reasonLabel')}
@@ -220,11 +291,9 @@ function SystemEvent({ entry }: { entry: CommentEntry }) {
   )
 }
 
-// GitHub-style comment card
 function CommentCard({ entry }: { entry: CommentEntry }) {
   return (
     <div className="my-4 rounded-md border">
-      {/* Header */}
       <div className="flex items-center justify-between border-b bg-muted/50 px-4 py-2">
         <div className="flex items-center gap-2">
           <Avatar name={entry.authorName} size="md" />
@@ -237,8 +306,6 @@ function CommentCard({ entry }: { entry: CommentEntry }) {
           {ACTION_ICONS.comment}
         </span>
       </div>
-
-      {/* Body */}
       <div className="px-4 py-3">
         <p className="whitespace-pre-wrap text-sm">{entry.body}</p>
       </div>

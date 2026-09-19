@@ -194,21 +194,24 @@
     "pointsPlaceholder": "Auto",
     "actionError": "Moderation action failed",
     "reasonLabel": "Reason",
+    "paramsUpdated": "parameters updated",
     "filterAll": "All",
     "queueEmpty": "No reports with this status",
     "archivePeriod": "Archive Period",
     "history": "History",
-    "actions": {
-      "created": "created",
-      "status_changed": "status changed",
-      "points_updated": "points updated",
-      "submitted": "submitted for moderation",
-      "sudo_action": "sudo action",
-      "comment": "comment",
-      "updated": "updated",
-      "deleted": "deleted"
-    },
     "comingSoon": "Moderation queue will appear here."
+  },
+  "audit": {
+    "actions": {
+      "created": "created the report",
+      "updated": "updated the report",
+      "status_changed": "changed status",
+      "points_updated": "changed points",
+      "calculation_updated": "changed calculation method",
+      "deleted": "deleted the report",
+      "sudo_action": "performed sudo action",
+      "comment": "commented"
+    }
   },
   "admin": {
     "tabs": {

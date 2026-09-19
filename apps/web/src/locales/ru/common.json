@@ -194,21 +194,24 @@
     "pointsPlaceholder": "Авто",
     "actionError": "Ошибка при модерации",
     "reasonLabel": "Причина",
+    "paramsUpdated": "параметры обновлены",
     "filterAll": "Все",
     "queueEmpty": "Нет отчётов с этим статусом",
     "archivePeriod": "Архивировать период",
     "history": "История",
-    "actions": {
-      "created": "создан",
-      "status_changed": "статус изменён",
-      "points_updated": "баллы обновлены",
-      "submitted": "отправлен на модерацию",
-      "sudo_action": "sudo-действие",
-      "comment": "комментарий",
-      "updated": "обновлён",
-      "deleted": "удалён"
-    },
     "comingSoon": "Очередь модерации появится здесь."
+  },
+  "audit": {
+    "actions": {
+      "created": "создал отчёт",
+      "updated": "обновил отчёт",
+      "status_changed": "изменил статус",
+      "points_updated": "изменил баллы",
+      "calculation_updated": "изменил метод расчёта",
+      "deleted": "удалил отчёт",
+      "sudo_action": "выполнил sudo-действие",
+      "comment": "оставил комментарий"
+    }
   },
   "admin": {
     "tabs": {
