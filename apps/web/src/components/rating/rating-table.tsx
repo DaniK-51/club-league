@@ -2,41 +2,64 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Trophy } from 'lucide-react'
 import { useRating } from '@/hooks/use-rating'
+import { usePeriods } from '@/hooks/use-periods'
+import { useAuthStore } from '@/store/auth.store'
 import { cn } from '@/lib/utils'
-
-const SEMESTERS = ['2026-fall', '2026-spring']
 
 const MEDALS = ['🥇', '🥈', '🥉']
 
 export function RatingTable() {
   const { t } = useTranslation()
-  const [semester, setSemester] = useState<string>('2026-fall')
-  const { data, isLoading } = useRating(semester)
+  const role = useAuthStore((s) => s.user?.role)
+  const isModerator = role === 'MODERATOR'
 
+  // Admin periods endpoint is moderator-only; guests use backend default period
+  const { data: periods } = usePeriods(isModerator)
+  const [period, setPeriod] = useState<string>('')
+
+  const periodOptions = useMemo(
+    () => (periods ?? []).filter((p) => !p.isArchived),
+    [periods]
+  )
+
+  const { data, isLoading } = useRating(period ? { period } : undefined)
   const clubs = useMemo(() => data?.clubs ?? [], [data])
 
   return (
     <div className="space-y-4">
-      {/* Semester filter */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted-foreground">
-          {t('rating.semester')}:
-        </span>
-        {SEMESTERS.map((sem) => (
+      {/* Period filter (moderator) */}
+      {isModerator && periodOptions.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            {t('rating.period')}:
+          </span>
           <button
-            key={sem}
-            onClick={() => setSemester(sem)}
+            onClick={() => setPeriod('')}
             className={cn(
               'rounded-full px-3 py-1 text-sm transition-colors',
-              semester === sem
+              period === ''
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
             )}
           >
-            {sem}
+            {t('rating.currentPeriod')}
           </button>
-        ))}
-      </div>
+          {periodOptions.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setPeriod(p.name)}
+              className={cn(
+                'rounded-full px-3 py-1 text-sm transition-colors',
+                period === p.name
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              )}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Loading / Empty */}
       {isLoading ? (

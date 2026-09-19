@@ -31,7 +31,7 @@ Source on `feat/frontend` (this branch may only carry built `dist/`).
 - [x] **Шаг 4:** Дашборд модератора: список отчётов, бейджи просрочки, interface изменения баллов. Comment обязателен для CHANGES_REQUIRED и auto-override; **не** обязателен при `calculationMethod=manual` (points уже через PATCH /calculation).
 - [ ] **Шаг 5:** Публичная страница рейтинга (`/rating`) с фильтрацией по **периодам** (`GET /api/admin/periods` + `GET /api/rating?period=`) и категориям.
 - [ ] **Шаг 6:** Админ-панель: аудит, force sync, rules CRUD (JSONB), **вкладка Periods** (create/edit/delete/archive).
-- [ ] **Шаг 7 (periods frontend):** Типы + `api-client` + hooks для Periods; вкладка Periods в админке; archive dialog с выбором периода; `periodName` на карточках; рейтинг `?period=`.
+- [x] **Шаг 7 (periods frontend):** Типы + `api-client` + hooks для Periods; вкладка Periods в админке; archive dialog с выбором периода; `periodName` на карточках; рейтинг `?period=`.
 
 ## Правила выполнения (для ИИ-агента)
 1. Один шаг = один промпт. Не генерировать код для следующих шагов.

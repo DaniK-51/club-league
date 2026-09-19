@@ -1,17 +1,22 @@
 import type {
   ApiSuccess,
+  ArchivePeriodResponse,
   AuditListResponse,
   CommentEntry,
+  CreatePeriodDTO,
   CreateReportDTO,
   CriteriaOut,
   LoginResponse,
   MeResponse,
   ModerateReportDTO,
+  PeriodOut,
   RatingResponse,
   ReportResponse,
   RuleOut,
+  SetCalculationDTO,
   SudoActionDTO,
   SyncStatus,
+  UpdatePeriodDTO,
   UpdateRuleDTO,
 } from './types'
 import { ApiError } from './types'
@@ -182,10 +187,7 @@ class ApiClient {
     })
   }
 
-  async setCalculation(
-    id: string,
-    dto: { method: 'auto' | 'manual'; manualPoints?: number; reason?: string }
-  ): Promise<ReportResponse> {
+  async setCalculation(id: string, dto: SetCalculationDTO): Promise<ReportResponse> {
     return this.request<ReportResponse>(`/api/reports/${id}/calculation`, {
       method: 'PATCH',
       body: JSON.stringify(dto),
@@ -205,13 +207,8 @@ class ApiClient {
     })
   }
 
-  async archiveReports(period: string): Promise<{
-    id: string
-    period: string
-    reportCount: number
-    archivedAt: string
-  }> {
-    return this.request(
+  async archiveReports(period: string): Promise<ArchivePeriodResponse> {
+    return this.request<ArchivePeriodResponse>(
       `/api/reports/archive?period=${encodeURIComponent(period)}`,
       { method: 'POST' }
     )
@@ -219,9 +216,12 @@ class ApiClient {
 
   // === Rating ===
 
-  async getRating(semester?: string): Promise<RatingResponse> {
-    const qs = semester ? `?semester=${encodeURIComponent(semester)}` : ''
-    return this.request<RatingResponse>(`/api/rating${qs}`)
+  async getRating(opts?: { period?: string; semester?: string }): Promise<RatingResponse> {
+    const params = new URLSearchParams()
+    if (opts?.period) params.set('period', opts.period)
+    if (opts?.semester) params.set('semester', opts.semester)
+    const qs = params.toString()
+    return this.request<RatingResponse>(`/api/rating${qs ? `?${qs}` : ''}`)
   }
 
   // === Admin ===
@@ -230,6 +230,30 @@ class ApiClient {
     return this.request<{ status: string }>('/api/admin/sync/force', {
       method: 'POST',
       body: JSON.stringify(semester ? { semester } : {}),
+    })
+  }
+
+  async getPeriods(): Promise<PeriodOut[]> {
+    return this.request<PeriodOut[]>('/api/admin/periods')
+  }
+
+  async createPeriod(dto: CreatePeriodDTO): Promise<PeriodOut> {
+    return this.request<PeriodOut>('/api/admin/periods', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    })
+  }
+
+  async updatePeriod(id: string, dto: UpdatePeriodDTO): Promise<PeriodOut> {
+    return this.request<PeriodOut>(`/api/admin/periods/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(dto),
+    })
+  }
+
+  async deletePeriod(id: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(`/api/admin/periods/${id}`, {
+      method: 'DELETE',
     })
   }
 

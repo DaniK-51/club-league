@@ -166,9 +166,11 @@
     "club": "Club",
     "points": "Points",
     "semester": "Semester",
+    "period": "Period",
+    "currentPeriod": "Current",
     "category": "Category",
     "breakdown": "By criteria",
-    "empty": "No data for selected semester",
+    "empty": "No data for selected period",
     "publicView": "Public club rating",
     "comingSoon": "Rating table will appear here."
   },
@@ -201,6 +203,10 @@
     "filterAll": "All",
     "queueEmpty": "No reports with this status",
     "archivePeriod": "Archive Period",
+    "archiveHint": "Reports in Completed/Closed status will move to Archived. The period will be marked as archived.",
+    "archivePeriodSelect": "Period",
+    "archiveConfirm": "Archive",
+    "archiveError": "Failed to archive period",
     "history": "History",
     "comingSoon": "Moderation queue will appear here."
   },
@@ -220,7 +226,8 @@
     "tabs": {
       "sync": "Sync",
       "audit": "Audit",
-      "rules": "Rules"
+      "rules": "Rules",
+      "periods": "Periods"
     },
     "sync": {
       "title": "Yandex Disk Sync",
@@ -257,6 +264,28 @@
       "saved": "Saved",
       "invalidJson": "Invalid JSON",
       "saveError": "Failed to save"
+    },
+    "periods": {
+      "title": "Scoring Periods",
+      "create": "Create Period",
+      "createTitle": "New Period",
+      "editTitle": "Edit Period",
+      "name": "Name",
+      "range": "Date Range",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "reportCount": "Reports",
+      "statusLabel": "Status",
+      "active": "Active",
+      "archived": "Archived",
+      "empty": "No periods yet",
+      "requiredFields": "Fill in name and dates",
+      "invalidRange": "End date must be after start date",
+      "saveError": "Failed to save period",
+      "deleteError": "Failed to delete period",
+      "deleteTitle": "Delete period?",
+      "deleteConfirm": "Delete period \"{{name}}\"? This cannot be undone.",
+      "deleteBlocked": "Cannot delete: period has reports"
     }
   }
 }

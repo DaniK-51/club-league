@@ -93,9 +93,13 @@ export function useDisputeReport() {
 }
 
 export function useArchiveReports() {
-  const invalidate = useInvalidateReports()
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (period: string) => api.archiveReports(period),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reports'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'periods'] })
+      queryClient.invalidateQueries({ queryKey: ['rating'] })
+    },
   })
 }

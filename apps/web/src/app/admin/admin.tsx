@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { SyncPanel } from '@/components/admin/sync-panel'
 import { AuditList } from '@/components/admin/audit-list'
 import { RulesEditor } from '@/components/admin/rules-editor'
+import { PeriodsManager } from '@/components/admin/periods-manager'
 import { cn } from '@/lib/utils'
 
-type Tab = 'sync' | 'audit' | 'rules'
+type Tab = 'sync' | 'audit' | 'rules' | 'periods'
 
-const TABS: Tab[] = ['sync', 'audit', 'rules']
+const TABS: Tab[] = ['sync', 'audit', 'rules', 'periods']
 
 export default function AdminPage() {
   const { t } = useTranslation()
@@ -39,6 +40,7 @@ export default function AdminPage() {
       {activeTab === 'sync' && <SyncPanel />}
       {activeTab === 'audit' && <AuditList />}
       {activeTab === 'rules' && <RulesEditor />}
+      {activeTab === 'periods' && <PeriodsManager />}
     </div>
   )
 }

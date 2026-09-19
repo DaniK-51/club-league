@@ -48,6 +48,11 @@ export function ReportList() {
               <div className="flex items-center gap-2">
                 <span className="font-medium">{report.criteriaCode}</span>
                 <StatusBadge status={report.status} />
+                {report.periodName && (
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                    {report.periodName}
+                  </span>
+                )}
                 {report.isOverdue && (
                   <span className="flex items-center gap-1 text-xs text-yellow-600">
                     <AlertTriangle className="h-3 w-3" />

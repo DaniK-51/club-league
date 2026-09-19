@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Archive } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ModerationCard } from './moderation-card'
-import { useReports, useArchiveReports } from '@/hooks/use-reports'
+import { ArchiveDialog } from './archive-dialog'
+import { useReports } from '@/hooks/use-reports'
 import type { ReportStatus } from '@/lib/types'
 
 const STATUS_FILTERS: (ReportStatus | 'ALL')[] = [
@@ -14,16 +15,17 @@ const STATUS_FILTERS: (ReportStatus | 'ALL')[] = [
   'CHANGES_REQUIRED',
   'COMPLETED',
   'CLOSED',
+  'ARCHIVED',
 ]
 
 export function ModerationQueue() {
   const { t } = useTranslation()
   const { data: reports, isLoading } = useReports()
-  const archiveReports = useArchiveReports()
 
   const [statusFilter, setStatusFilter] = useState<ReportStatus | 'ALL'>(
     'ON_MODERATION'
   )
+  const [archiveOpen, setArchiveOpen] = useState(false)
 
   const filtered = useMemo(() => {
     if (!reports) return []
@@ -71,8 +73,7 @@ export function ModerationQueue() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => archiveReports.mutate('2026-fall')}
-            disabled={archiveReports.isPending}
+            onClick={() => setArchiveOpen(true)}
           >
             <Archive className="h-3 w-3" />
             {t('moderation.archivePeriod')}
@@ -92,6 +93,8 @@ export function ModerationQueue() {
           ))}
         </div>
       )}
+
+      <ArchiveDialog open={archiveOpen} onClose={() => setArchiveOpen(false)} />
     </div>
   )
 }

@@ -14,6 +14,8 @@ export type UserRole = 'GUEST' | 'CLUB_LEADER' | 'MODERATOR'
 
 export type ClubCategory = 'SPORT' | 'TECH' | 'ART' | 'SPECIAL_INTEREST'
 
+export type CalculationMethod = 'auto' | 'manual'
+
 // === DTOs ===
 
 export interface CreateReportDTO {
@@ -26,7 +28,25 @@ export interface CreateReportDTO {
 export interface ModerateReportDTO {
   status: 'APPROVED' | 'CHANGES_REQUIRED' | 'CLOSED'
   finalPoints?: number
-  comment: string
+  comment?: string
+}
+
+export interface SetCalculationDTO {
+  method: CalculationMethod
+  manualPoints?: number | null
+  reason?: string | null
+}
+
+export interface CreatePeriodDTO {
+  name: string
+  startDate: string
+  endDate: string
+}
+
+export interface UpdatePeriodDTO {
+  name?: string | null
+  startDate?: string | null
+  endDate?: string | null
 }
 
 export interface SudoActionDTO {
@@ -52,10 +72,27 @@ export interface ReportResponse {
   status: ReportStatus
   calculatedPoints: number | null
   finalPoints: number | null
-  calculationMethod: 'auto' | 'manual'
+  calculationMethod: CalculationMethod
   manualPoints: number | null
+  periodName: string | null
   links: ReportLink[]
   reportData: Record<string, unknown>
+}
+
+export interface PeriodOut {
+  id: string
+  name: string
+  startDate: string
+  endDate: string
+  isArchived: boolean
+  reportCount: number
+}
+
+export interface ArchivePeriodResponse {
+  id: string
+  period: string
+  reportCount: number
+  archivedAt: string
 }
 
 export interface MeResponse {
@@ -135,6 +172,7 @@ export interface AuditLogOut {
   action: string
   oldValue: Record<string, unknown> | null
   newValue: Record<string, unknown> | null
+  displayData: Record<string, unknown> | null
   performedByName: string
   performedByRole: string
   performedAt: string
