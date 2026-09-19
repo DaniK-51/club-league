@@ -222,6 +222,7 @@ export interface ApiError { error: { code: string; message: string } }
 // POST   /api/reports/:id/comments     -> CreateCommentDTO -> CommentEntry (leader/moderator)
 // POST   /api/reports/archive?period=  -> ArchivePeriodResponse (модератор; Period table only)
 // GET    /api/rating?period=&semester=  -> { clubs: RatingClub[] } (period приоритетнее)
+// GET    /api/periods                   -> PeriodOut[] (public; active + archived)
 // POST   /api/admin/sync/force         -> { semester?: string } -> { status: 'queued' } (Только модератор)
 // GET    /api/admin/sync/status        -> SyncStatus
 // POST   /api/admin/sudo               -> SudoActionDTO -> { success: true } (Только модератор с can_sudo)
@@ -305,14 +306,16 @@ export enum ErrorCode {
  * - GET /api/rating?period=<name>:
  *     1) Period table by name
  *     2) else semester_range() fallback ("YYYY-fall|spring|summer")
- *     3) else no date filter (all COMPLETED reports)
+ *     3) else no date filter (all COMPLETED + ARCHIVED reports)
  *   Without params → last non-archived Period by startDate; if none → current_semester fallback.
+ *   Rating counts COMPLETED + ARCHIVED (historical periods must stay stable after archive).
  * - POST /api/reports/archive?period=<name>:
  *     Period table ONLY (no semester fallback).
  *     404 PERIOD_NOT_FOUND if missing; 400 ALREADY_ARCHIVED if already archived.
  *     After batch: Period.isArchived = true.
  * - Approve: при calculation_method="manual" comment НЕ обязателен.
  * - Audit entity_type="period": actions created / updated / deleted (moderator CRUD).
+ * - GET /api/periods — public list (active + archived) for rating period filter.
  *
  * KNOWN GAPS (documented, not bugs):
  * - POST /api/admin/sync/force accepts { semester } but debounced flush currently

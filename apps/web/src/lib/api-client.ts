@@ -237,6 +237,10 @@ class ApiClient {
     return this.request<PeriodOut[]>('/api/admin/periods')
   }
 
+  async getPublicPeriods(): Promise<PeriodOut[]> {
+    return this.request<PeriodOut[]>('/api/periods')
+  }
+
   async createPeriod(dto: CreatePeriodDTO): Promise<PeriodOut> {
     return this.request<PeriodOut>('/api/admin/periods', {
       method: 'POST',

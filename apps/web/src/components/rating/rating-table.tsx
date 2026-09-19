@@ -2,33 +2,65 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Trophy } from 'lucide-react'
 import { useRating } from '@/hooks/use-rating'
+import { usePublicPeriods } from '@/hooks/use-public-periods'
 import { usePeriods } from '@/hooks/use-periods'
 import { useAuthStore } from '@/store/auth.store'
+import type { PeriodOut } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const MEDALS = ['🥇', '🥈', '🥉']
+
+/** Until GET /api/periods ships, moderator can use admin list; guests get fallback names. */
+const FALLBACK_PERIODS: PeriodOut[] = [
+  {
+    id: 'fb-fall',
+    name: '2026-fall',
+    startDate: '2026-09-01',
+    endDate: '2026-12-31',
+    isArchived: false,
+    reportCount: 0,
+  },
+  {
+    id: 'fb-spring',
+    name: '2026-spring',
+    startDate: '2026-01-01',
+    endDate: '2026-05-31',
+    isArchived: false,
+    reportCount: 0,
+  },
+  {
+    id: 'fb-summer',
+    name: '2026-summer',
+    startDate: '2026-06-01',
+    endDate: '2026-08-31',
+    isArchived: false,
+    reportCount: 0,
+  },
+]
 
 export function RatingTable() {
   const { t } = useTranslation()
   const role = useAuthStore((s) => s.user?.role)
   const isModerator = role === 'MODERATOR'
 
-  // Admin periods endpoint is moderator-only; guests use backend default period
-  const { data: periods } = usePeriods(isModerator)
+  const publicPeriods = usePublicPeriods()
+  const adminPeriods = usePeriods(isModerator)
+
   const [period, setPeriod] = useState<string>('')
 
-  const periodOptions = useMemo(
-    () => (periods ?? []).filter((p) => !p.isArchived),
-    [periods]
-  )
+  const periodOptions = useMemo<PeriodOut[]>(() => {
+    if (publicPeriods.data?.length) return publicPeriods.data
+    if (isModerator && adminPeriods.data?.length) return adminPeriods.data
+    return FALLBACK_PERIODS
+  }, [publicPeriods.data, adminPeriods.data, isModerator])
 
   const { data, isLoading } = useRating(period ? { period } : undefined)
   const clubs = useMemo(() => data?.clubs ?? [], [data])
 
   return (
     <div className="space-y-4">
-      {/* Period filter (moderator) */}
-      {isModerator && periodOptions.length > 0 && (
+      {/* Period filter — all roles, including archived */}
+      {periodOptions.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted-foreground">
             {t('rating.period')}:
@@ -52,10 +84,21 @@ export function RatingTable() {
                 'rounded-full px-3 py-1 text-sm transition-colors',
                 period === p.name
                   ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80',
+                period !== p.name &&
+                  p.isArchived &&
+                  'opacity-70 ring-1 ring-muted-foreground/30'
               )}
+              title={
+                p.isArchived ? t('rating.archivedPeriod') : undefined
+              }
             >
               {p.name}
+              {p.isArchived && (
+                <span className="ml-1 text-[10px] uppercase opacity-80">
+                  {t('rating.archivedShort')}
+                </span>
+              )}
             </button>
           ))}
         </div>

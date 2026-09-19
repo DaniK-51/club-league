@@ -168,6 +168,8 @@
     "semester": "Семестр",
     "period": "Период",
     "currentPeriod": "Текущий",
+    "archivedPeriod": "Архивный период",
+    "archivedShort": "архив",
     "category": "Категория",
     "breakdown": "По критериям",
     "empty": "Нет данных за выбранный период",

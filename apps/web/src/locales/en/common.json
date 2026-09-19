@@ -168,6 +168,8 @@
     "semester": "Semester",
     "period": "Period",
     "currentPeriod": "Current",
+    "archivedPeriod": "Archived period",
+    "archivedShort": "arch",
     "category": "Category",
     "breakdown": "By criteria",
     "empty": "No data for selected period",
