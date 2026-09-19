@@ -19,7 +19,9 @@
     "close": "Close",
     "back": "Back",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "old": "was",
+    "new": "now"
   },
   "nav": {
     "rating": "Rating",

@@ -196,14 +196,6 @@ function renderSystemEvent(
   const str = (v: unknown): string | null =>
     v != null && v !== '' ? String(v) : null
 
-  const criteriaCode = str(dd.criteriaCode)
-  const criteriaName = str(dd.criteriaName)
-  const criteriaLabel = criteriaCode
-    ? criteriaName
-      ? `${criteriaCode} — ${criteriaName}`
-      : criteriaCode
-    : null
-
   const statusLabel = (v: unknown): string | null => {
     const s = str(v)
     return s ? t(`report.status.${s}`, s) : null
@@ -217,36 +209,31 @@ function renderSystemEvent(
   const points = (v: unknown): string | null =>
     v != null ? `${String(v)} ${t('report.pointsUnit')}` : null
 
+  const formatParams = (data: unknown): string | null => {
+    if (!data || typeof data !== 'object') return null
+    const entries = Object.entries(data as Record<string, unknown>)
+      .filter(([, v]) => v != null && v !== '')
+    if (entries.length === 0) return null
+    return entries.map(([k, v]) => `${k}: ${String(v)}`).join(', ')
+  }
+
   const actionLabel = t(`audit.actions.${action}`, action)
 
   switch (action) {
     case 'created': {
-      const caption = criteriaLabel
-        ? `${actionLabel} — ${criteriaLabel}`
-        : actionLabel
       const pts = points(dd.calculatedPoints)
-      if (pts) details.push({ label: t('report.points'), value: pts })
-      const reportData = dd.reportData
-      if (reportData && typeof reportData === 'object') {
-        const entries = Object.entries(reportData as Record<string, unknown>)
-          .filter(([, v]) => v != null && v !== '')
-        if (entries.length > 0) {
-          details.push({
-            label: t('report.parameters'),
-            value: entries.map(([k, v]) => `${k}: ${String(v)}`).join(', '),
-          })
-        }
-      }
+      const params = formatParams(dd.reportData)
       const links = dd.links
-      if (Array.isArray(links) && links.length > 0) {
-        details.push({
-          label: t('report.links'),
-          value: links
+      const linkList = Array.isArray(links)
+        ? links
             .map((l) => (l && typeof l === 'object' && 'domain' in l ? String(l.domain) : null))
             .filter(Boolean)
-            .join(', '),
-        })
-      }
+            .join(', ')
+        : null
+      const parts = [pts, params, linkList].filter(Boolean)
+      const caption = parts.length > 0
+        ? `${actionLabel} — ${parts.join(' — ')}`
+        : actionLabel
       return { caption, details }
     }
 
@@ -257,9 +244,6 @@ function renderSystemEvent(
       const caption = statusPart
         ? `${actionLabel} — ${statusPart}`
         : actionLabel
-      if (criteriaLabel) {
-        details.push({ label: t('report.criteria'), value: criteriaLabel })
-      }
       const calcPts = points(dd.calculatedPoints)
       if (calcPts) details.push({ label: t('moderation.calculated'), value: calcPts })
       const finPts = points(dd.finalPoints)
@@ -278,9 +262,6 @@ function renderSystemEvent(
       const oldP = str(dd.oldPoints) ?? '—'
       const newP = str(dd.newPoints) ?? '—'
       const caption = `${actionLabel} — ${oldP} → ${newP} ${t('report.pointsUnit')}`
-      if (criteriaLabel) {
-        details.push({ label: t('report.criteria'), value: criteriaLabel })
-      }
       const method = methodLabel(dd.calculationMethod)
       if (method) details.push({ label: t('moderation.calcMethod'), value: method })
       const modComment = str(dd.moderationComment)
@@ -296,9 +277,6 @@ function renderSystemEvent(
       const caption = methodPart
         ? `${actionLabel} — ${methodPart}${manualPts ? ` (${manualPts})` : ''}`
         : actionLabel
-      if (criteriaLabel) {
-        details.push({ label: t('report.criteria'), value: criteriaLabel })
-      }
       const reason = str(dd.reason)
       if (reason) details.push({ label: t('moderation.reasonLabel'), value: reason })
       return { caption, details }
@@ -307,48 +285,54 @@ function renderSystemEvent(
     case 'updated': {
       const oldPts = str(dd.oldCalculatedPoints)
       const newPts = str(dd.newCalculatedPoints)
-      const ptsPart = oldPts && newPts
-        ? `${t('report.points')}: ${oldPts} → ${newPts}`
-        : null
+      const ptsPart = oldPts && newPts ? `${oldPts} → ${newPts}` : null
       const caption = ptsPart
-        ? `${actionLabel} — ${ptsPart}`
+        ? `${actionLabel} — ${t('report.points')}: ${ptsPart}`
         : actionLabel
-      if (criteriaLabel) {
-        details.push({ label: t('report.criteria'), value: criteriaLabel })
-      }
-      const reportData = dd.reportData
-      if (reportData && typeof reportData === 'object') {
-        const entries = Object.entries(reportData as Record<string, unknown>)
-          .filter(([, v]) => v != null && v !== '')
-        if (entries.length > 0) {
-          details.push({
-            label: t('report.parameters'),
-            value: entries.map(([k, v]) => `${k}: ${String(v)}`).join(', '),
-          })
+      // Show changes from backend: [{ field, old, new }]
+      const changes = dd.changes
+      if (Array.isArray(changes)) {
+        for (const change of changes) {
+          if (!change || typeof change !== 'object') continue
+          const field = 'field' in change ? String(change.field) : null
+          const oldVal = 'old' in change ? change.old : null
+          const newVal = 'new' in change ? change.new : null
+
+          if (field === 'reportData') {
+            const oldP = formatParams(oldVal)
+            const newP = formatParams(newVal)
+            if (oldP) details.push({ label: `${t('report.parameters')} (${t('common.old', 'было')})`, value: oldP })
+            if (newP) details.push({ label: `${t('report.parameters')} (${t('common.new', 'стало')})`, value: newP })
+          } else if (field === 'links') {
+            const oldLinks = Array.isArray(oldVal)
+              ? oldVal.map((l) => String(l)).join(', ')
+              : null
+            const newLinks = Array.isArray(newVal)
+              ? newVal.map((l) => String(l)).join(', ')
+              : null
+            if (oldLinks) details.push({ label: `${t('report.links')} (${t('common.old', 'было')})`, value: oldLinks })
+            if (newLinks) details.push({ label: `${t('report.links')} (${t('common.new', 'стало')})`, value: newLinks })
+          } else if (field === 'activityDate') {
+            if (oldVal) details.push({ label: `${t('report.activityDate')} (${t('common.old', 'было')})`, value: String(oldVal) })
+            if (newVal) details.push({ label: `${t('report.activityDate')} (${t('common.new', 'стало')})`, value: String(newVal) })
+          }
         }
       }
       return { caption, details }
     }
 
     case 'deleted': {
-      const caption = criteriaLabel
-        ? `${actionLabel} — ${criteriaLabel}`
-        : actionLabel
-      return { caption, details }
+      return { caption: actionLabel, details }
     }
 
     case 'sudo_action': {
-      const caption = actionLabel
       const reason = str(dd.reason) ?? (body && body !== action ? body : null)
       if (reason) details.push({ label: t('moderation.reasonLabel'), value: reason })
-      return { caption, details }
+      return { caption: actionLabel, details }
     }
 
     default: {
-      const caption = criteriaLabel
-        ? `${actionLabel} — ${criteriaLabel}`
-        : actionLabel
-      return { caption, details }
+      return { caption: actionLabel, details }
     }
   }
 }
