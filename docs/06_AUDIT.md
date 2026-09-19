@@ -44,26 +44,32 @@
 
 ### 2.2. Поле `display_data`
 
-JSONB-поле **специально для отображения на фронтенде**. Содержит структурированную информацию о действии: старый/новый статус, баллы, заголовок, summary.
+JSONB-поле **специально для отображения на фронтенде**. Содержит структурированную информацию о действии: заголовок, summary, старый/новый статус, баллы, контекст критерия.
 
 **Включается в хеш-цепочку** — при изменении `display_data` хеш записи меняется.
 
-**Примеры `display_data` по действиям:**
+**Базовые поля (есть во всех событиях отчёта):**
+- `title` — заголовок ("Report created", "Status changed", …)
+- `summary` — короткое описание (основной источник для `CommentEntry.body`)
+- `criteriaCode`, `criteriaName`, `criteriaNameEn` — контекст критерия
+- `activityDate` — ISO-дата события
+
+**Примеры `display_data` (camelCase — формат, который отдаётся фронту):**
 
 | Action | display_data |
 |--------|--------------|
-| `created` (report) | `{ "title": "Report created", "summary": "Draft created", "status": "DRAFT", "calculated_points": 500 }` |
-| `status_changed` (moderation) | `{ "title": "Status changed", "summary": "ON_MODERATION → APPROVED — Looks good", "old_status": "ON_MODERATION", "new_status": "APPROVED", "final_points": 500 }` |
-| `status_changed` (submit) | `{ "title": "Status changed", "summary": "DRAFT → ON_MODERATION", "old_status": "DRAFT", "new_status": "ON_MODERATION" }` |
-| `points_updated` | `{ "title": "Points updated", "summary": "finalPoints: 500 → 200", "old_points": 500, "new_points": 200 }` |
-| `calculation_updated` | `{ "title": "Calculation method updated", "summary": "auto → manual (350 pts)", "old_method": "auto", "new_method": "manual", "manual_points": 350 }` |
+| `created` | `{ "title": "Report created", "summary": "C8 — Образовательный контент", "criteriaCode": "C8", "criteriaName": "...", "criteriaNameEn": "...", "activityDate": "...", "reportData": {...}, "links": [{"url": "...", "domain": "..."}], "calculatedPoints": 500, "isOverdue": false }` |
+| `updated` | `{ "title": "Report updated", "summary": "reportData, links changed", "criteriaCode": "C8", ..., "changes": [{"field": "reportData", "old": {...}, "new": {...}}], "oldCalculatedPoints": 250, "newCalculatedPoints": 500 }` |
+| `status_changed` (moderation) | `{ "title": "Status changed", "summary": "ON_MODERATION → APPROVED — Looks good", "criteriaCode": "C8", ..., "oldStatus": "ON_MODERATION", "newStatus": "APPROVED", "calculatedPoints": 500, "finalPoints": 500, "calculationMethod": "auto", "manualPoints": null, "moderationComment": "Looks good" }` |
+| `status_changed` (submit) | `{ "title": "Status changed", "summary": "DRAFT → ON_MODERATION", "criteriaCode": "C8", ..., "oldStatus": "DRAFT", "newStatus": "ON_MODERATION", "calculatedPoints": 500 }` |
+| `points_updated` | `{ "title": "Points updated", "summary": "finalPoints: 500 → 200", "criteriaCode": "C8", ..., "oldPoints": 500, "newPoints": 200, "calculationMethod": "auto", "manualPoints": null, "moderationComment": "reduced" }` |
+| `calculation_updated` | `{ "title": "Calculation method updated", "summary": "auto → manual (350 pts)", "criteriaCode": "C8", ..., "oldMethod": "auto", "newMethod": "manual", "manualPoints": 350, "reason": "..." }` |
 | `comment` | `{ "title": "Comment", "summary": "Looks good" }` |
-| `deleted` | `{ "title": "Report deleted", "summary": "DRAFT deleted", "old_status": "DRAFT" }` |
-| `sudo_action` (force_status) | `{ "title": "Sudo: force_status", "summary": "DRAFT → COMPLETED", "sudo_action": "force_status", "old_status": "DRAFT", "new_status": "COMPLETED" }` |
-| `sudo_action` (restore) | `{ "title": "Sudo: restore_deleted", "summary": "Report restored", "sudo_action": "restore_deleted" }` |
-| `sudo_action` (override) | `{ "title": "Sudo: override_points", "summary": "finalPoints set to 999", "sudo_action": "override_points", "new_points": 999 }` |
+| `deleted` | `{ "title": "Report deleted", "summary": "C8 deleted", "criteriaCode": "C8", ..., "reportData": {...} }` |
+| `sudo_action` | `{ "title": "Sudo: force_status", "summary": "DRAFT → COMPLETED", "criteriaCode": "C8", ..., "sudoAction": "force_status", "targetReportId": "uuid", "oldValue": {...}, "newValue": {...}, "reason": "..." }` |
+| `status_changed` (archive) | `{ "title": "Report archived", "summary": "Archived in period 2026-fall", "criteriaCode": "C8", ..., "period": "2026-fall", "batchId": "uuid" }` |
 | `created` (user) | `{ "title": "User created", "summary": "GUEST", "email": "...", "role": "GUEST" }` |
-| `updated` (rule) | `{ "title": "Rule updated", "summary": "C8 tiered config updated", "rule_type": "tiered" }` |
+| `updated` (rule) | `{ "title": "Rule updated", "summary": "C8 tiered config updated", "rule_type": "tiered", "criteria_code": "C8" }` |
 
 **Использование на фронтенде:**
 ```typescript
@@ -72,8 +78,11 @@ const entry = comments[0];
 if (entry.displayData) {
   showBadge(entry.displayData.title);
   showSummary(entry.displayData.summary);
-  if (entry.displayData.old_status && entry.displayData.new_status) {
-    showStatusTransition(entry.displayData.old_status, entry.displayData.new_status);
+  if (entry.displayData.oldStatus && entry.displayData.newStatus) {
+    showStatusTransition(entry.displayData.oldStatus, entry.displayData.newStatus);
+  }
+  if (entry.displayData.criteriaCode) {
+    showCriteriaBadge(entry.displayData.criteriaCode);
   }
 }
 ```
@@ -434,10 +443,10 @@ curl "http://127.0.0.1:8000/api/admin/audit?entityType=report&entityId=uuid&limi
       "action": "created",
       "authorName": "Лидер Клуба",
       "authorRole": "CLUB_LEADER",
-      "body": "Draft created",
+      "body": "C8 — Образовательный контент",
       "oldValue": null,
       "newValue": {"status": "DRAFT", ...},
-      "displayData": {"title": "Report created", "summary": "Draft created", "status": "DRAFT"},
+      "displayData": {"title": "Report created", "summary": "C8 — Образовательный контент", "criteriaCode": "C8", "activityDate": "...", "calculatedPoints": 500},
       "createdAt": "2026-09-17T20:00:00+00:00"
     },
     {
@@ -448,7 +457,7 @@ curl "http://127.0.0.1:8000/api/admin/audit?entityType=report&entityId=uuid&limi
       "body": "ON_MODERATION → APPROVED — Looks good",
       "oldValue": {"status": "ON_MODERATION", ...},
       "newValue": {"status": "APPROVED", "final_points": 500, "moderation_comment": "Looks good"},
-      "displayData": {"title": "Status changed", "summary": "ON_MODERATION → APPROVED — Looks good", "old_status": "ON_MODERATION", "new_status": "APPROVED", "final_points": 500},
+      "displayData": {"title": "Status changed", "summary": "ON_MODERATION → APPROVED — Looks good", "criteriaCode": "C8", "oldStatus": "ON_MODERATION", "newStatus": "APPROVED", "calculatedPoints": 500, "finalPoints": 500, "calculationMethod": "auto", "moderationComment": "Looks good"},
       "createdAt": "2026-09-17T22:00:00+00:00"
     }
   ]
@@ -463,7 +472,7 @@ curl "http://127.0.0.1:8000/api/admin/audit?entityType=report&entityId=uuid&limi
 | 2 | `new_value.body` — для `action="comment"` |
 | 3 | `reason` / `new_value.moderation_comment` / `status → {status}` — fallback |
 
-**`displayData`** — структурированные данные для фронтенда (см. раздел 2.2).
+**`displayData`** — структурированные данные для фронтенда (camelCase, см. раздел 2.2).
 
 ### 6.3. POST /api/reports/:id/comments — Добавить комментарий
 

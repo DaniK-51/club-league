@@ -1,12 +1,20 @@
 // === Enums ===
 export type ReportStatus = 'DRAFT' | 'ON_MODERATION' | 'CHANGES_REQUIRED' | 'APPROVED' | 'DISPUTED' | 'COMPLETED' | 'CLOSED' | 'ARCHIVED';
+export type UserRole = 'GUEST' | 'CLUB_LEADER' | 'MODERATOR';
+export type CalculationMethod = 'auto' | 'manual';
 
 // === DTOs ===
 export interface CreateReportDTO {
   criteriaId: string;
   activityDate: string; // ISO 8601
-  reportData: Record<string, any>; // Валидируется на бэке по схеме критерия
+  reportData: Record<string, unknown>; // Валидируется на бэке по схеме критерия
   links: string[]; // Массив URL
+}
+
+export interface UpdateReportDTO {
+  activityDate?: string | null;
+  reportData?: Record<string, unknown> | null;
+  links?: string[] | null;
 }
 
 export interface ModerateReportDTO {
@@ -15,14 +23,49 @@ export interface ModerateReportDTO {
   comment: string; // Обязателен при CHANGES_REQUIRED или изменении баллов
 }
 
+export interface DisputeReportDTO {
+  comment: string;
+}
+
+export interface SetCalculationDTO {
+  method: CalculationMethod;
+  manualPoints?: number | null; // Required if method = "manual"
+  reason?: string | null;
+}
+
+export interface CreateCommentDTO {
+  body: string;
+}
+
 export interface SudoActionDTO {
   action: 'force_status' | 'restore_deleted' | 'override_points';
   targetReportId: string;
-  newValue: any;
+  newValue: unknown;
   reason: string; // Обязательно
 }
 
+export interface UpdateRuleDTO {
+  config?: Record<string, unknown> | null;
+  priority?: number | null;
+  ruleType?: string | null;
+}
+
 // === Responses ===
+export interface MeResponse {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  canSudo: boolean;
+  clubIds: string[];
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: MeResponse;
+}
+
 export interface ReportResponse {
   id: string;
   clubName: string;
@@ -32,10 +75,10 @@ export interface ReportResponse {
   status: ReportStatus;
   calculatedPoints: number | null;
   finalPoints: number | null;
-  calculationMethod: 'auto' | 'manual'; // NEW
-  manualPoints: number | null;           // NEW
+  calculationMethod: CalculationMethod;
+  manualPoints: number | null;
   links: { url: string; domain: string }[];
-  reportData: Record<string, unknown>;   // NEW
+  reportData: Record<string, unknown>;
 }
 
 export interface CommentEntry {
@@ -46,8 +89,83 @@ export interface CommentEntry {
   body: string;
   oldValue: Record<string, unknown> | null;
   newValue: Record<string, unknown> | null;
-  displayData: Record<string, unknown> | null; // NEW — structured data for rendering
+  displayData: Record<string, unknown> | null; // Structured data for rendering
   createdAt: string;
+}
+
+export interface RatingClub {
+  id: string;
+  name: string;
+  totalPoints: number;
+  breakdown: Record<string, number>;
+}
+
+export interface CriteriaRuleOut {
+  id: string;
+  ruleType: string;
+  config: Record<string, unknown>;
+  priority: number;
+  versionId: string;
+  semester: string;
+}
+
+export interface CriteriaOut {
+  id: string;
+  code: string;
+  nameRu: string;
+  nameEn: string;
+  category: string | null;
+  rules: CriteriaRuleOut[];
+}
+
+export interface RuleOut {
+  id: string;
+  criteriaId: string;
+  criteriaCode: string;
+  ruleType: string;
+  config: Record<string, unknown>;
+  priority: number;
+  versionId: string;
+  semester: string;
+}
+
+export interface AuditLogOut {
+  id: string;
+  seq: number;
+  entityType: string;
+  entityId: string;
+  action: string;
+  oldValue: Record<string, unknown> | null;
+  newValue: Record<string, unknown> | null;
+  displayData: Record<string, unknown> | null;
+  performedByName: string;
+  performedByRole: string;
+  performedAt: string;
+  reason: string | null;
+  hash: string;
+}
+
+export interface AuditListResponse {
+  items: AuditLogOut[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface SyncStatus {
+  pending: boolean;
+  lastRunAt: string | null;
+  lastError: string | null;
+  runCount: number;
+  debounceSeconds: number;
+}
+
+export interface SyncQueued {
+  status: 'queued';
+}
+
+export interface SudoSuccess {
+  success: true;
 }
 
 export interface ApiSuccess<T> { data: T }
@@ -69,9 +187,9 @@ export interface ApiError { error: { code: string; message: string } }
 // POST   /api/reports/:id/dispute      -> { comment: string } -> ReportResponse (Лидер оспаривает APPROVED)
 // POST   /api/reports/:id/complete     -> APPROVED → COMPLETED
 // PATCH  /api/reports/:id/calculation  -> SetCalculationDTO -> ReportResponse (модератор, без смены статуса)
-// POST   /api/reports/:id/comments     -> { body: string } -> CommentEntry (leader/moderator)
+// POST   /api/reports/:id/comments     -> CreateCommentDTO -> CommentEntry (leader/moderator)
 // POST   /api/reports/archive?period=  -> batch COMPLETED/CLOSED → ARCHIVED (модератор)
-// GET    /api/rating?semester=2026-fall -> { clubs: { id, name, totalPoints, breakdown }[] }
+// GET    /api/rating?semester=2026-fall -> { clubs: RatingClub[] }
 // POST   /api/admin/sync/force         -> { semester?: string } -> { status: 'queued' } (Только модератор)
 // GET    /api/admin/sync/status        -> SyncStatus
 // POST   /api/admin/sudo               -> SudoActionDTO -> { success: true } (Только модератор с can_sudo)
@@ -127,19 +245,17 @@ export enum ErrorCode {
  *
  * AUDIT DISPLAY_DATA:
  * - Каждая запись audit_logs содержит display_data (JSONB) для фронтенда.
- * - Все события содержат criteriaCode, criteriaName, activityDate.
- * - created: { title, summary, criteriaCode, criteriaName, criteriaNameEn, activityDate,
- *              reportData, links, calculatedPoints, isOverdue }
- * - status_changed: { title, summary, criteriaCode, ..., oldStatus, newStatus,
- *                     calculatedPoints, finalPoints, calculationMethod, manualPoints, moderationComment }
- * - points_updated: { title, summary, criteriaCode, ..., oldPoints, newPoints,
- *                     calculationMethod, manualPoints, moderationComment }
- * - calculation_updated: { title, summary, criteriaCode, ..., oldMethod, newMethod,
- *                          manualPoints, reason }
- * - updated: { title, summary, criteriaCode, ..., changes[], oldCalculatedPoints, newCalculatedPoints }
- * - deleted: { title, summary, criteriaCode, ..., reportData, activityDate }
- * - sudo_action: { title, summary, criteriaCode, ..., sudoAction, targetReportId,
- *                  oldValue, newValue, reason }
- * - archive: { title, summary, criteriaCode, ..., period, batchId }
- * - CommentEntry.displayData отдаёт это поле напрямую.
+ * - Базовые поля (все события отчёта): title, summary, criteriaCode, criteriaName,
+ *   criteriaNameEn, activityDate.
+ * - created: + reportData, links[], calculatedPoints, isOverdue
+ * - updated: + changes[] (field/old/new), oldCalculatedPoints, newCalculatedPoints
+ * - status_changed: + oldStatus, newStatus, calculatedPoints, finalPoints,
+ *   calculationMethod, manualPoints, moderationComment
+ * - points_updated: + oldPoints, newPoints, calculationMethod, manualPoints, moderationComment
+ * - calculation_updated: + oldMethod, newMethod, manualPoints, reason
+ * - deleted: + reportData
+ * - sudo_action: + sudoAction, targetReportId, oldValue, newValue, reason
+ * - archive (status_changed): + period, batchId
+ * - CommentEntry.displayData отдаёт это поле напрямую (camelCase).
+ * - CommentEntry.body = display_data.summary (fallback: reason / new_value).
  */

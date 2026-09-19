@@ -4,11 +4,11 @@
 - [x] **Шаг 1:** Инициализация FastAPI, SQLAlchemy, подключение к PostgreSQL. Настройка миграций (Alembic) по `schema.prisma`.
 - [x] **Шаг 2:** Интеграция SSO (OAuth2/SAML) + Policy-based авторизация (модуль `policies/`). Dev: `apps/mock-sso` (roles/sudo only in our DB).
 - [x] **Шаг 3:** Реализация `AuditService` с криптографической цепочкой (hash chain) и триггерами БД (REVOKE). `seq` identity + advisory lock; verify script.
-- [x] **Шаг 4:** Ядро `RulesEngine`: реализация 3 базовых типов правил (tiered, scale, binary) + валидация JSONB через Pydantic.
+- [x] **Шаг 4:** Ядро `RulesEngine`: все 17 типов правил из rules-catalog.md (tiered, scale, binary, tiered_with_bonus, per_unit_with_bonus, binary_with_monthly_cap, fixed_monthly_with_per_unit, scale_with_frequency_limit, scale_with_conditional_bonus, scale_with_league_bonus, scale_with_conditional_modifier, scale_split_mode, binary_scale, per_person_per_month, discretionary, fixed_per_event_with_monthly_cap, combined_cap) + валидация JSONB через Pydantic. Seed: 27 критериев v2.
 - [x] **Шаг 5:** Полный CRUD отчётов (`reports.py`) с валидацией whitelist ссылок и soft warning дедлайна (7 дней).
 - [x] **Шаг 6:** Логика модерации: переходы статусов, расчёт `finalPoints`, применение капов (включая combined cap C4+C5).
 - [x] **Шаг 7:** Sudo mode: форсированные переходы и восстановление удалённых отчётов с обязательным `reason`.
-- [x] **Шаг 8:** Sync Service: Debouncer (1 час) + клиент Yandex Disk WebDAV с retry логикой.
+- [x] **Шаг 8:** Sync Service: Debouncer (1 час) + клиент Yandex Disk WebDAV с retry логикой. Public rating + monthly caps + G1.
 
 ## Frontend (/apps/web)
 - [ ] **Шаг 1:** Инициализация Vite + React + Tailwind + shadcn/ui. Настройка i18next (RU/EN).

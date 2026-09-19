@@ -12,7 +12,7 @@
 - **Moderator** (1 person, @T_Konovalov) — reviews reports, adjusts points, archives periods
 - **Guests** — view public rating
 
-**Key principle:** The system is the **single source of truth**. Yandex Sheets is a read-only mirror synced hourly.
+**Key principle:** The system is the **single source of truth**. Yandex Disk (WebDAV CSV) is a read-only mirror synced hourly.
 
 ---
 
@@ -60,10 +60,11 @@
 ## 🏗️ Architecture Overview
 
 ### Stack
-- **Backend:** Python 3.11+ / FastAPI / SQLAlchemy 2.0 / PostgreSQL 15+
+- **Backend:** Python 3.11+ / FastAPI / SQLAlchemy 2.0 async / PostgreSQL 16
 - **Frontend:** React 18 + Vite (SPA, **NOT Next.js**) / TypeScript strict / Tailwind + shadcn/ui
-- **Auth:** University SSO only (OAuth2/SAML). No local passwords.
+- **Auth:** University SSO only (OAuth2/SAML). No local passwords. Dev: `apps/mock-sso`.
 - **Validation:** Pydantic V2 (strict mode) on backend, Zod on frontend
+- **Package manager:** uv (backend) / npm (frontend)
 
 ### Report State Machine (8 statuses)
 ```
@@ -83,9 +84,12 @@ DRAFT → ON_MODERATION → APPROVED → COMPLETED → ARCHIVED
 ### Rules Engine
 - Hybrid storage: normalized columns + `JSONB` for rule configs
 - Configs validated by Pydantic schemas per `rule_type`
-- ~17 rule types (tiered, scale, binary, monthly_cap, combined_cap, etc.)
-- **Combined cap G1:** `C4 + C5 ≤ 15% of monthly total` — applied LAST, after all individual reports
+- **17 rule types** implemented (tiered, scale, binary, tiered_with_bonus, per_unit_with_bonus, binary_with_monthly_cap, fixed_monthly_with_per_unit, scale_with_frequency_limit, scale_with_conditional_bonus, scale_with_league_bonus, scale_with_conditional_modifier, scale_split_mode, binary_scale, per_person_per_month, discretionary, fixed_per_event_with_monthly_cap, combined_cap)
+- **27 criteria** seeded (C1–C11, S1–S4, T1–T3, A1–A4, I1–I4, G1)
+- **Combined cap G1:** `C4 + C5 ≤ 15% of monthly total` — applied per month, loaded from DB
+- **Monthly caps** (C4, C7, C9, C11) applied per month before G1
 - **Manual override:** Moderator can set ANY `final_points` value (logged in audit)
+- **calculationMethod:** `auto` (RulesEngine) or `manual` (moderator sets `manualPoints`)
 
 ### Yandex Disk WebDAV Sync
 - **Event-driven with 1-hour debounce**
@@ -163,6 +167,7 @@ DRAFT → ON_MODERATION → APPROVED → COMPLETED → ARCHIVED
 | `/docs/03_STRUCTURE.md` | Monorepo folder layout |
 | `/docs/04_ARCHITECTURE.md` | Mermaid diagrams (state machine, flows) |
 | `/docs/05_IMPLEMENTATION_PLAN.md` | Step-by-step dev plan + DoD |
+| `/docs/06_AUDIT.md` | **Audit system: hash chain, actions, displayData, API** |
 | `/docs/shared/schema.prisma` | Database schema (source of truth) |
 | `/docs/shared/api-contract.ts` | API DTOs, responses, error codes |
 | `/docs/shared/rules-catalog.md` | **v2 criteria catalog — THE rulebook** |
@@ -233,7 +238,7 @@ Use one of these scopes (matches `/docs/03_STRUCTURE.md`):
 | `rules` | RulesEngine, rule types, Pydantic configs |
 | `moderation` | Status transitions, approve/reject/dispute |
 | `rating` | Rating calculation, caching, public page |
-| `sync` | Yandex Sheets sync, debouncer, retry |
+| `sync` | Yandex Disk WebDAV sync, debouncer, retry, rating |
 | `audit` | Audit logs, hash chain, sudo actions |
 | `auth` | SSO integration, JWT, policies |
 | `frontend` | React components, forms, i18n |
@@ -334,5 +339,5 @@ If you encounter a contradiction between this file and other docs:
 
 ---
 
-*Last updated: 2026-09-16*
+*Last updated: 2026-09-19*
 *Maintainer: @T_Konovalov (mentor)*
