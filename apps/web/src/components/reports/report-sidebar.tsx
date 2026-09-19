@@ -66,7 +66,6 @@ function ReportSidebarInner({ report, rule, criteriaName, onNavigateBack }: Repo
   const [comment, setComment] = useState('')
   const [disputeComment, setDisputeComment] = useState('')
   const [showDisputeForm, setShowDisputeForm] = useState(false)
-  const [finalPoints, setFinalPoints] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
 
   // Result editing state
@@ -109,13 +108,11 @@ function ReportSidebarInner({ report, rule, criteriaName, onNavigateBack }: Repo
         dto: {
           status,
           comment: comment.trim(),
-          ...(finalPoints !== '' ? { finalPoints: Number(finalPoints) } : {}),
         },
       },
       {
         onSuccess: () => {
           setComment('')
-          setFinalPoints('')
         },
         onError: (err) => {
           setActionError(
