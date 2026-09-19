@@ -92,6 +92,33 @@ services:
     networks:
       - club-league
 
+  web:
+    build:
+      context: ./apps/web
+      args:
+        # Browser-facing URLs use localhost (not 127.0.0.1).
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:${API_PORT:-8000}}
+        VITE_SSO_AUTHORIZE_URL: ${VITE_SSO_AUTHORIZE_URL:-http://localhost:${MOCK_SSO_PORT:-9001}/authorize}
+        VITE_SSO_CLIENT_ID: ${VITE_SSO_CLIENT_ID:-club-league-dev}
+        VITE_SSO_REDIRECT_URI: ${VITE_SSO_REDIRECT_URI:-http://localhost:${WEB_PORT:-5173}/auth/callback}
+      cache_from:
+        - type=gha
+    container_name: club-league-web
+    ports:
+      - "${WEB_PORT:-5173}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+      mock-sso:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - club-league
+
 networks:
   club-league:
     driver: bridge

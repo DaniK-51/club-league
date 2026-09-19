@@ -10,6 +10,12 @@ venv/
 .coverage
 htmlcov/
 
+# Node
+node_modules/
+dist/
+.vite/
+coverage/
+
 # Env
 .env
 .env.local
@@ -18,7 +24,3 @@ htmlcov/
 .idea/
 .vscode/
 .DS_Store
-
-# Node (frontend later)
-node_modules/
-dist/
