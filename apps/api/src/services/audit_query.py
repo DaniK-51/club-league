@@ -27,9 +27,7 @@ async def list_audit_logs(
     if entity_id:
         filters.append(AuditLog.entity_id == entity_id)
 
-    total = await session.scalar(
-        select(func.count()).select_from(AuditLog).where(*filters) if filters else select(func.count()).select_from(AuditLog)
-    )
+    total = await session.scalar(select(func.count()).select_from(AuditLog).where(*filters))
 
     query = (
         select(AuditLog)

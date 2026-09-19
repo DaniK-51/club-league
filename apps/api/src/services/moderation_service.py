@@ -25,6 +25,7 @@ from src.services.report_state import (
     ensure_leader_transition,
     ensure_moderator_transition,
 )
+from src.services.sync_service import debouncer
 
 
 def _now() -> datetime:
@@ -54,13 +55,13 @@ def requires_comment(
     target_status: ReportStatus,
     calculated: int | None,
     final_points: int | None,
-    comment: str,
     calculation_method: str = "auto",
 ) -> bool:
     """Comment required for CHANGES_REQUIRED or explicit override.
 
     When calculation_method="manual", points were already justified via
     PATCH /calculation (which has its own reason + audit trail).
+    Caller still checks that a non-empty comment is present.
     """
     if target_status == ReportStatus.CHANGES_REQUIRED:
         return True
@@ -96,7 +97,6 @@ async def moderate_report(
         target_status=payload.status,
         calculated=report.calculated_points,
         final_points=final_points,
-        comment=comment,
         calculation_method=report.calculation_method or "auto",
     ) and not comment:
         raise api_error(
@@ -174,8 +174,6 @@ async def moderate_report(
     await session.commit()
 
     if report.status == ReportStatus.COMPLETED:
-        from src.services.sync_service import debouncer
-
         debouncer.notify()
 
     loaded = await _get_report(session, report.id)
@@ -275,8 +273,6 @@ async def complete_report(
         },
     )
     await session.commit()
-
-    from src.services.sync_service import debouncer
 
     debouncer.notify()
 

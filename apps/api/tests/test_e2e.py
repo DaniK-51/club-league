@@ -11,7 +11,6 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete, text
 from src.core.database import get_session_factory
 from src.core.security import create_access_token
 from src.models.entities import (
@@ -19,30 +18,14 @@ from src.models.entities import (
     ClubLeader,
     Criteria,
     CriteriaRule,
-    Period,
-    Report,
-    ReportLink,
     RulesVersion,
     User,
 )
 from src.models.enums import ClubCategory, UserRole
 
-
-async def _wipe() -> None:
-    factory = get_session_factory()
-    async with factory() as session:
-        await session.execute(text("TRUNCATE sudo_actions, audit_logs RESTART IDENTITY CASCADE"))
-        await session.execute(text("TRUNCATE archive_batches RESTART IDENTITY CASCADE"))
-        await session.execute(delete(ReportLink))
-        await session.execute(delete(Report))
-        await session.execute(delete(Period))
-        await session.execute(delete(CriteriaRule))
-        await session.execute(delete(Criteria))
-        await session.execute(delete(RulesVersion))
-        await session.execute(delete(ClubLeader))
-        await session.execute(delete(User))
-        await session.execute(delete(Club))
-        await session.commit()
+from tests.helpers import add_default_periods
+from tests.helpers import auth as _auth
+from tests.helpers import wipe_db as _wipe
 
 
 @pytest.fixture
@@ -95,24 +78,7 @@ async def e2e_env(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> Async
                 version_id=version.id,
             )
         )
-        from zoneinfo import ZoneInfo
-
-        tz = ZoneInfo("Europe/Moscow")
-        now_p = datetime.now(UTC)
-        for pname, ps, pe in [
-            ("2026-fall", datetime(2026, 9, 1, tzinfo=tz), datetime(2027, 1, 1, tzinfo=tz)),
-            ("2026-spring", datetime(2026, 1, 1, tzinfo=tz), datetime(2026, 6, 1, tzinfo=tz)),
-        ]:
-            session.add(
-                Period(
-                    name=pname,
-                    start_date=ps,
-                    end_date=pe,
-                    is_archived=False,
-                    created_at=now_p,
-                    updated_at=now_p,
-                )
-            )
+        await add_default_periods(session, now=now)
         await session.commit()
         yield {
             "leader_token": create_access_token(
@@ -125,10 +91,6 @@ async def e2e_env(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> Async
             "club_id": club.id,
         }
     await _wipe()
-
-
-def _auth(t: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {t}"}
 
 
 async def test_full_report_lifecycle(client: AsyncClient, e2e_env: dict[str, str]) -> None:

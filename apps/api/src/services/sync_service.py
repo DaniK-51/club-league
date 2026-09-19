@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -15,13 +16,18 @@ from src.core.config import get_settings
 from src.core.database import get_session_factory
 from src.models.entities import Report
 from src.models.enums import ReportStatus
+from src.schemas.rules import CombinedCapConfig
 from src.services.caps import apply_combined_cap
 from src.services.global_rules import load_combined_caps
-from src.services.periods import month_key, semester_range
+from src.services.period_service import resolve_rating_window
+from src.services.periods import month_key
 from src.services.rating_caps import apply_monthly_caps, load_monthly_caps
 from src.services.yandex_sheets import SheetsWriter, build_client
 
 logger = logging.getLogger(__name__)
+
+# Archived included so historical ratings stay stable after period archive.
+_RATING_STATUSES = (ReportStatus.COMPLETED, ReportStatus.ARCHIVED)
 
 
 @dataclass(frozen=True)
@@ -72,7 +78,6 @@ class SyncDebouncer:
         try:
             await self.flush()
         except Exception:
-            # last_error already set in flush; keep debouncer alive
             logger.exception("debounced sync failed")
 
     async def flush(self, writer: SheetsWriter | None = None) -> list[ClubTotal]:
@@ -112,45 +117,68 @@ def _totals_to_rows(totals: list[ClubTotal], *, semester: str) -> list[list[obje
     return rows
 
 
+def _report_points(report: Report) -> int:
+    if report.final_points is not None:
+        return int(report.final_points)
+    return int(report.calculated_points or 0)
+
+
+def _aggregate_totals(
+    reports: Iterable[Report],
+    *,
+    monthly_caps: dict[str, int],
+    g1_list: list[CombinedCapConfig],
+) -> list[ClubTotal]:
+    nested: dict[str, dict[str, dict[str, int]]] = {}
+    names: dict[str, str] = {}
+    for report in reports:
+        if not report.club or not report.criteria:
+            continue
+        points = _report_points(report)
+        mkey = month_key(report.activity_date)
+        code = report.criteria.code
+        month_map = nested.setdefault(report.club_id, {}).setdefault(mkey, {})
+        month_map[code] = month_map.get(code, 0) + points
+        names[report.club_id] = report.club.name
+
+    totals: list[ClubTotal] = []
+    for club_id, by_month in nested.items():
+        period_breakdown: dict[str, int] = {}
+        for month_points in by_month.values():
+            # Monthly caps AND G1 combined_cap are per-month (catalog).
+            capped_month = apply_monthly_caps(month_points, monthly_caps)
+            for g1 in g1_list:
+                capped_month = apply_combined_cap(capped_month, g1)
+            for code, pts in capped_month.items():
+                period_breakdown[code] = period_breakdown.get(code, 0) + pts
+        totals.append(
+            ClubTotal(
+                club_id=club_id,
+                club_name=names.get(club_id, club_id),
+                total_points=sum(period_breakdown.values()),
+                breakdown=period_breakdown,
+            )
+        )
+    totals.sort(key=lambda item: (-item.total_points, item.club_name))
+    return totals
+
+
 async def compute_rating(
     session: AsyncSession,
     *,
     semester: str | None = None,
     period_name: str | None = None,
 ) -> list[ClubTotal]:
-    """COMPLETED + ARCHIVED reports for period/semester; monthly caps; then G1.
-
-    Priority: period_name (Period table) > semester (Period table) > current period.
-    ARCHIVED is included so historical ratings stay stable after period archive.
-    """
-    from src.models.entities import Period
-    from src.services.period_service import get_current_period, get_period_by_name
-
-    start: datetime | None = None
-    end: datetime | None = None
-    period_label = period_name or semester or ""
-
-    period_row: Period | None = None
-    if period_name:
-        period_row = await get_period_by_name(session, period_name)
-    elif semester:
-        period_row = await get_period_by_name(session, semester)
-    else:
-        period_row = await get_current_period(session)
-
-    if period_row is not None:
-        start, end = period_row.start_date, period_row.end_date
-        period_label = period_row.name
-    elif period_label:
-        rng = semester_range(period_label)
-        if rng is not None:
-            start, end = rng
+    """COMPLETED + ARCHIVED for period/semester window; monthly caps; then G1."""
+    start, end, period_label = await resolve_rating_window(
+        session, period_name=period_name, semester=semester
+    )
 
     query = (
         select(Report)
         .options(selectinload(Report.club), selectinload(Report.criteria))
         .where(
-            Report.status.in_([ReportStatus.COMPLETED, ReportStatus.ARCHIVED]),
+            Report.status.in_(_RATING_STATUSES),
             Report.is_deleted.is_(False),
         )
     )
@@ -162,45 +190,7 @@ async def compute_rating(
 
     monthly_caps = await load_monthly_caps(session, semester=period_label)
     g1_list = await load_combined_caps(session, semester=period_label)
-
-    # club → month → criteria → points
-    nested: dict[str, dict[str, dict[str, int]]] = {}
-    names: dict[str, str] = {}
-    for report in reports:
-        if not report.club or not report.criteria:
-            continue
-        points = (
-            report.final_points
-            if report.final_points is not None
-            else (report.calculated_points or 0)
-        )
-        mkey = month_key(report.activity_date)
-        code = report.criteria.code
-        nested.setdefault(report.club_id, {}).setdefault(mkey, {})
-        month_map = nested[report.club_id][mkey]
-        month_map[code] = month_map.get(code, 0) + int(points)
-        names[report.club_id] = report.club.name
-
-    totals: list[ClubTotal] = []
-    for club_id, by_month in nested.items():
-        semester_breakdown: dict[str, int] = {}
-        for _mkey, month_points in by_month.items():
-            # Monthly caps AND G1 combined_cap are per-month (catalog: monthly aggregate)
-            capped_month = apply_monthly_caps(month_points, monthly_caps)
-            for g1 in g1_list:
-                capped_month = apply_combined_cap(capped_month, g1)
-            for code, pts in capped_month.items():
-                semester_breakdown[code] = semester_breakdown.get(code, 0) + pts
-        totals.append(
-            ClubTotal(
-                club_id=club_id,
-                club_name=names.get(club_id, club_id),
-                total_points=sum(semester_breakdown.values()),
-                breakdown=semester_breakdown,
-            )
-        )
-    totals.sort(key=lambda item: (-item.total_points, item.club_name))
-    return totals
+    return _aggregate_totals(reports, monthly_caps=monthly_caps, g1_list=g1_list)
 
 
 debouncer = SyncDebouncer()

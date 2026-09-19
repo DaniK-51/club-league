@@ -33,7 +33,7 @@ class CreateCommentDTO(BaseModel):
     body: str = Field(min_length=1, max_length=5000)
 
 
-_COMMENT_ACTIONS = [
+_COMMENT_ACTIONS = (
     "created",
     "updated",
     "status_changed",
@@ -42,7 +42,7 @@ _COMMENT_ACTIONS = [
     "sudo_action",
     "comment",
     "calculation_updated",
-]
+)
 
 
 def _build_body(row: AuditLog) -> str:

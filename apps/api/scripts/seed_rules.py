@@ -9,14 +9,24 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import dispose_engine, get_session_factory
-from src.models.entities import Criteria, CriteriaRule, RulesVersion
+from src.models.entities import Criteria, CriteriaRule, Period, Report, RulesVersion
 from src.models.enums import ClubCategory
 from src.schemas.rules import parse_rule_config
+from src.services.period_service import resolve_period_for_date
 
 SEMESTER = "2026-fall"
+_BUSINESS_TZ = ZoneInfo("Europe/Moscow")
+
+_DEFAULT_PERIODS: list[tuple[str, datetime, datetime]] = [
+    ("2026-fall", datetime(2026, 9, 1, tzinfo=_BUSINESS_TZ), datetime(2027, 1, 1, tzinfo=_BUSINESS_TZ)),
+    ("2026-spring", datetime(2026, 1, 1, tzinfo=_BUSINESS_TZ), datetime(2026, 6, 1, tzinfo=_BUSINESS_TZ)),
+    ("2026-summer", datetime(2026, 6, 1, tzinfo=_BUSINESS_TZ), datetime(2026, 9, 1, tzinfo=_BUSINESS_TZ)),
+]
 
 # Full v2 catalog — values from rules-catalog.md
 CRITERIA: list[dict[str, Any]] = [
@@ -427,6 +437,35 @@ CRITERIA: list[dict[str, Any]] = [
 ]
 
 
+async def _seed_default_periods(session: AsyncSession) -> None:
+    for name, start, end in _DEFAULT_PERIODS:
+        existing = await session.scalar(select(Period).where(Period.name == name))
+        if existing is None:
+            now = datetime.now(UTC)
+            session.add(
+                Period(
+                    name=name,
+                    start_date=start,
+                    end_date=end,
+                    is_archived=False,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+    await session.flush()
+
+
+async def _backfill_report_periods(session: AsyncSession) -> None:
+    result = await session.execute(
+        select(Report).where(Report.period_id.is_(None), Report.is_deleted.is_(False))
+    )
+    for report in result.scalars().all():
+        period = await resolve_period_for_date(session, report.activity_date)
+        if period is not None:
+            report.period_id = period.id
+    await session.flush()
+
+
 async def seed() -> None:
     factory = get_session_factory()
     async with factory() as session:
@@ -438,43 +477,8 @@ async def seed() -> None:
             session.add(version)
             await session.flush()
 
-        from zoneinfo import ZoneInfo
-
-        from src.models.entities import Period
-
-        tz = ZoneInfo("Europe/Moscow")
-        default_periods = [
-            ("2026-fall", datetime(2026, 9, 1, tzinfo=tz), datetime(2027, 1, 1, tzinfo=tz)),
-            ("2026-spring", datetime(2026, 1, 1, tzinfo=tz), datetime(2026, 6, 1, tzinfo=tz)),
-            ("2026-summer", datetime(2026, 6, 1, tzinfo=tz), datetime(2026, 9, 1, tzinfo=tz)),
-        ]
-        for name, start, end in default_periods:
-            existing = await session.scalar(select(Period).where(Period.name == name))
-            if existing is None:
-                now = datetime.now(UTC)
-                session.add(
-                    Period(
-                        name=name,
-                        start_date=start,
-                        end_date=end,
-                        is_archived=False,
-                        created_at=now,
-                        updated_at=now,
-                    )
-                )
-        await session.flush()
-
-        from src.models.entities import Report
-        from src.services.period_service import resolve_period_for_date
-
-        result = await session.execute(
-            select(Report).where(Report.period_id.is_(None), Report.is_deleted.is_(False))
-        )
-        for report in result.scalars().all():
-            period = await resolve_period_for_date(session, report.activity_date)
-            if period is not None:
-                report.period_id = period.id
-        await session.flush()
+        await _seed_default_periods(session)
+        await _backfill_report_periods(session)
 
         for item in CRITERIA:
             code = str(item["code"])

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Never
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,6 +38,11 @@ from src.services.sudo_service import (
 from src.services.sync_service import debouncer
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+def _not_found(code: ErrorCode, message: str) -> Never:
+    """Raise a 404 API envelope for missing admin resources."""
+    raise api_error(404, code, message)
 
 
 @router.post("/sudo", response_model=ApiSuccess[SudoSuccess])
@@ -94,7 +99,7 @@ async def admin_get_rule(
     try:
         rule = await get_rule(session, rule_id)
     except RuleNotFoundError:
-        raise api_error(404, ErrorCode.RULES_VERSION_NOT_FOUND, "Rule not found") from None
+        _not_found(ErrorCode.RULES_VERSION_NOT_FOUND, "Rule not found")
     return ApiSuccess(data=rule)
 
 
@@ -109,7 +114,7 @@ async def admin_update_rule(
     try:
         rule = await update_rule(session, user=user, rule_id=rule_id, payload=payload)
     except RuleNotFoundError:
-        raise api_error(404, ErrorCode.RULES_VERSION_NOT_FOUND, "Rule not found") from None
+        _not_found(ErrorCode.RULES_VERSION_NOT_FOUND, "Rule not found")
     return ApiSuccess(data=rule)
 
 
@@ -165,7 +170,7 @@ async def admin_update_period(
     try:
         item = await update_period(session, user=user, period_id=period_id, payload=payload)
     except PeriodNotFoundError:
-        raise api_error(404, ErrorCode.PERIOD_NOT_FOUND, "Period not found") from None
+        _not_found(ErrorCode.PERIOD_NOT_FOUND, "Period not found")
     return ApiSuccess(data=item)
 
 
@@ -178,7 +183,7 @@ async def admin_delete_period(
     try:
         await delete_period(session, user=user, period_id=period_id)
     except PeriodNotFoundError:
-        raise api_error(404, ErrorCode.PERIOD_NOT_FOUND, "Period not found") from None
+        _not_found(ErrorCode.PERIOD_NOT_FOUND, "Period not found")
     return ApiSuccess(data={"success": True})
 
 

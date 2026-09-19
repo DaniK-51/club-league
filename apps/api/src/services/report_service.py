@@ -31,6 +31,7 @@ from src.schemas.report import (
 from src.schemas.rules import ReportDataError, RuleValidationError, UnknownRuleTypeError
 from src.services.audit_service import AuditService
 from src.services.link_validation import LinkValidationError, validate_links
+from src.services.period_service import assign_report_period
 from src.services.report_state import (
     ensure_leader_transition,
 )
@@ -179,10 +180,6 @@ async def create_report(
     points = _calculate_points(rule, dict(payload.reportData))
     now = _now()
 
-    from src.services.period_service import resolve_period_for_date
-
-    period = await resolve_period_for_date(session, activity_date)
-
     report = Report(
         club_id=club_id,
         criteria_id=criteria.id,
@@ -191,11 +188,11 @@ async def create_report(
         report_data=dict(payload.reportData),
         status=ReportStatus.DRAFT,
         calculated_points=points,
-        period_id=period.id if period else None,
         is_deleted=False,
         created_at=now,
         updated_at=now,
     )
+    await assign_report_period(session, report=report, activity_date=activity_date)
     session.add(report)
     await session.flush()
 
@@ -240,23 +237,17 @@ async def _user_club_ids(session: AsyncSession, user_id: str) -> frozenset[str]:
     return frozenset(row[0] for row in result.all())
 
 
-# Statuses where moderator may edit reportData via PATCH /reports/:id
+# Statuses where moderator may edit reportData / calculation method
 _MODERATOR_EDIT_STATUSES = frozenset({
     ReportStatus.ON_MODERATION,
     ReportStatus.DISPUTED,
     ReportStatus.CHANGES_REQUIRED,
     ReportStatus.APPROVED,
 })
+# Intentional alias: calc-method updates share the same status gate as reportData edits
+_MODERATOR_CALC_STATUSES = _MODERATOR_EDIT_STATUSES
 
-# Statuses where moderator may set calculation method
-_MODERATOR_CALC_STATUSES = frozenset({
-    ReportStatus.ON_MODERATION,
-    ReportStatus.DISPUTED,
-    ReportStatus.CHANGES_REQUIRED,
-    ReportStatus.APPROVED,
-})
-
-# Statuses where leader may edit (via ensure_editable)
+# Statuses where leader may edit (via ensure_editable / report_state.EDITABLE_STATUSES)
 _LEADER_EDIT_STATUSES = frozenset({ReportStatus.DRAFT, ReportStatus.CHANGES_REQUIRED})
 
 
@@ -303,11 +294,7 @@ async def update_report(
 
     if payload.activityDate is not None:
         report.activity_date = parse_activity_date(payload.activityDate)
-        from src.services.period_service import resolve_period_for_date
-
-        new_period = await resolve_period_for_date(session, report.activity_date)
-        report.period_id = new_period.id if new_period else None
-        report.period = new_period
+        await assign_report_period(session, report=report, activity_date=report.activity_date)
     if payload.reportData is not None:
         report.report_data = dict(payload.reportData)
     if payload.links is not None:
@@ -550,8 +537,7 @@ async def list_reports(
         .order_by(Report.created_at.desc())
     )
     if user.role != UserRole.MODERATOR:
-        result = await session.execute(select(ClubLeader.club_id).where(ClubLeader.user_id == user.id))
-        club_ids = frozenset(row[0] for row in result.all())
+        club_ids = await _user_club_ids(session, user.id)
         if not club_ids:
             return []
         if club_id is not None:

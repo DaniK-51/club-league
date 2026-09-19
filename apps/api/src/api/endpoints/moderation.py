@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_user, require_moderator
@@ -84,7 +84,7 @@ async def complete(
 async def archive(
     user: Annotated[User, Depends(require_moderator)],
     session: Annotated[AsyncSession, Depends(get_db)],
-    period: str | None = None,
+    period: Annotated[str | None, Query()] = None,
 ) -> ApiSuccess[dict[str, object]]:
     """Batch COMPLETED/CLOSED → ARCHIVED for a period (docs/04_ARCHITECTURE.md)."""
     try:

@@ -7,10 +7,10 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import delete, text
+from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from src.core.database import get_session_factory
-from src.models.entities import Club, ClubLeader, User
+from src.models.entities import User
 from src.models.enums import UserRole
 from src.services.audit_service import (
     GENESIS_HASH,
@@ -19,15 +19,7 @@ from src.services.audit_service import (
     user_public_snapshot,
 )
 
-
-async def _reset() -> None:
-    factory = get_session_factory()
-    async with factory() as session:
-        await session.execute(text("TRUNCATE sudo_actions, audit_logs, archive_batches RESTART IDENTITY CASCADE"))
-        await session.execute(delete(ClubLeader))
-        await session.execute(delete(User))
-        await session.execute(delete(Club))
-        await session.commit()
+from tests.helpers import wipe_db as _reset
 
 
 @pytest.fixture

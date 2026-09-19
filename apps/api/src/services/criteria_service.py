@@ -18,6 +18,19 @@ class RuleNotFoundError(Exception):
     pass
 
 
+def _rule_to_out(rule: CriteriaRule) -> RuleOut:
+    return RuleOut(
+        id=rule.id,
+        criteriaId=rule.criteria_id,
+        criteriaCode=rule.criteria.code if rule.criteria else "",
+        ruleType=rule.rule_type,
+        config=dict(rule.config or {}),
+        priority=rule.priority,
+        versionId=rule.version_id,
+        semester=rule.version.semester if rule.version else "",
+    )
+
+
 async def _active_version(session: AsyncSession, semester: str | None = None) -> RulesVersion | None:
     q = select(RulesVersion)
     if semester:
@@ -78,16 +91,7 @@ async def get_rule(session: AsyncSession, rule_id: str) -> RuleOut:
     )
     if rule is None:
         raise RuleNotFoundError(rule_id)
-    return RuleOut(
-        id=rule.id,
-        criteriaId=rule.criteria_id,
-        criteriaCode=rule.criteria.code if rule.criteria else "",
-        ruleType=rule.rule_type,
-        config=dict(rule.config or {}),
-        priority=rule.priority,
-        versionId=rule.version_id,
-        semester=rule.version.semester if rule.version else "",
-    )
+    return _rule_to_out(rule)
 
 
 async def update_rule(
@@ -147,13 +151,4 @@ async def update_rule(
     )
     await session.commit()
 
-    return RuleOut(
-        id=rule.id,
-        criteriaId=rule.criteria_id,
-        criteriaCode=rule.criteria.code if rule.criteria else "",
-        ruleType=rule.rule_type,
-        config=dict(rule.config or {}),
-        priority=rule.priority,
-        versionId=rule.version_id,
-        semester=rule.version.semester if rule.version else "",
-    )
+    return _rule_to_out(rule)

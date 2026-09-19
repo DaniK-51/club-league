@@ -9,6 +9,7 @@ from src.api.deps import get_current_user
 from src.core.database import get_db
 from src.core.errors import api_error
 from src.models.entities import User
+from src.models.enums import ReportStatus, UserRole
 from src.schemas.common import ApiSuccess, ErrorCode
 from src.schemas.report import CreateReportDTO, ReportResponse, SetCalculationDTO, UpdateReportDTO
 from src.services.comments_service import (
@@ -164,9 +165,11 @@ async def create_comment(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiSuccess[CommentEntry]:
     """Add a regular comment (leader or moderator, any status except ARCHIVED)."""
-    from src.models.enums import ReportStatus, UserRole
-
-    report = await get_report(session, user=user, report_id=report_id)
+    try:
+        report = await get_report(session, user=user, report_id=report_id)
+    except (ReportNotFoundError, InvalidTransitionError) as exc:
+        _map_report_errors(exc)
+        raise
     if report.status == ReportStatus.ARCHIVED:
         raise api_error(
             400,

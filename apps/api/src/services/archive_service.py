@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,36 +10,17 @@ from sqlalchemy.orm import selectinload
 
 from src.core.config import get_settings
 from src.core.errors import api_error
-from src.models.entities import ArchiveBatch, Period, Report, User
+from src.models.entities import ArchiveBatch, Report, User
 from src.models.enums import ReportStatus, UserRole
 from src.policies.common import ensure_moderator
 from src.schemas.common import ErrorCode
 from src.services.audit_service import AuditService
+from src.services.period_service import get_period_by_name, require_active_period
 from src.services.report_service import _criteria_context
 
 
 def _now() -> datetime:
     return datetime.now(UTC)
-
-
-async def _resolve_period_range(
-    session: AsyncSession, period_name: str
-) -> tuple[datetime, datetime, str]:
-    """Return (start, end, period_name). Period table is source of truth."""
-    period = await session.scalar(select(Period).where(Period.name == period_name))
-    if period is None:
-        raise api_error(
-            404,
-            ErrorCode.PERIOD_NOT_FOUND,
-            f"Period {period_name} not found",
-        )
-    if period.is_archived:
-        raise api_error(
-            400,
-            ErrorCode.ALREADY_ARCHIVED,
-            f"Period {period_name} already archived",
-        )
-    return period.start_date, period.end_date, period.name
 
 
 async def archive_period(
@@ -50,10 +31,9 @@ async def archive_period(
     Filter: `activity_date` inside period range from the Period table.
     """
     ensure_moderator(user)
-    target_period = period or get_settings().current_semester
-    start, end, period_name = await _resolve_period_range(session, target_period)
-
-    period_row = await session.scalar(select(Period).where(Period.name == period_name))
+    target = period or get_settings().current_semester
+    period_row = require_active_period(await get_period_by_name(session, target), name=target)
+    start, end, period_name = period_row.start_date, period_row.end_date, period_row.name
 
     result = await session.execute(
         select(Report)
@@ -113,9 +93,8 @@ async def archive_period(
             reason=f"archive period {period_name}",
         )
 
-    if period_row is not None:
-        period_row.is_archived = True
-        period_row.updated_at = _now()
+    period_row.is_archived = True
+    period_row.updated_at = _now()
 
     await session.commit()
     return batch
@@ -128,8 +107,6 @@ async def complete_approved_if_stale(
     actor_id: str | None = None,
 ) -> int:
     """Auto-timer: APPROVED reports older than N days → COMPLETED."""
-    from datetime import timedelta
-
     cutoff = datetime.now(UTC) - timedelta(days=older_than_days)
     result = await session.execute(
         select(Report)

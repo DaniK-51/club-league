@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete, text
 from src.core.database import get_session_factory
 from src.core.security import create_access_token
 from src.models.entities import (
@@ -15,30 +14,14 @@ from src.models.entities import (
     ClubLeader,
     Criteria,
     CriteriaRule,
-    Period,
-    Report,
-    ReportLink,
     RulesVersion,
     User,
 )
 from src.models.enums import ClubCategory, ReportStatus, UserRole
 from src.services.moderation_service import requires_comment, resolve_final_points
 
-
-async def _wipe() -> None:
-    factory = get_session_factory()
-    async with factory() as session:
-        await session.execute(text("TRUNCATE sudo_actions, audit_logs, archive_batches RESTART IDENTITY CASCADE"))
-        await session.execute(delete(ReportLink))
-        await session.execute(delete(Report))
-        await session.execute(delete(Period))
-        await session.execute(delete(CriteriaRule))
-        await session.execute(delete(Criteria))
-        await session.execute(delete(RulesVersion))
-        await session.execute(delete(ClubLeader))
-        await session.execute(delete(User))
-        await session.execute(delete(Club))
-        await session.commit()
+from tests.helpers import auth as _auth
+from tests.helpers import wipe_db as _wipe
 
 
 @pytest.fixture
@@ -95,10 +78,6 @@ async def mod_env(client: AsyncClient) -> AsyncIterator[dict[str, str]]:
             "criteria_id": criteria.id,
         }
     await _wipe()
-
-
-def _auth(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
 
 
 async def _create_submitted(client: AsyncClient, env: dict[str, str]) -> str:
@@ -255,17 +234,14 @@ def test_resolve_final_points_helpers() -> None:
         target_status=ReportStatus.CHANGES_REQUIRED,
         calculated=1,
         final_points=1,
-        comment="",
     )
     assert requires_comment(
         target_status=ReportStatus.APPROVED,
         calculated=10,
         final_points=5,
-        comment="",
     )
     assert not requires_comment(
         target_status=ReportStatus.APPROVED,
         calculated=10,
         final_points=10,
-        comment="",
     )

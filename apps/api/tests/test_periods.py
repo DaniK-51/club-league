@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
-from zoneinfo import ZoneInfo
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete, select, text
+from sqlalchemy import select
 from src.core.database import get_session_factory
 from src.core.security import create_access_token
 from src.models.entities import (
@@ -18,31 +17,14 @@ from src.models.entities import (
     CriteriaRule,
     Period,
     Report,
-    ReportLink,
     RulesVersion,
     User,
 )
 from src.models.enums import ClubCategory, ReportStatus, UserRole
 
-TZ = ZoneInfo("Europe/Moscow")
-
-
-async def _wipe() -> None:
-    factory = get_session_factory()
-    async with factory() as session:
-        await session.execute(
-            text("TRUNCATE sudo_actions, audit_logs, archive_batches RESTART IDENTITY CASCADE")
-        )
-        await session.execute(delete(ReportLink))
-        await session.execute(delete(Report))
-        await session.execute(delete(Period))
-        await session.execute(delete(CriteriaRule))
-        await session.execute(delete(Criteria))
-        await session.execute(delete(RulesVersion))
-        await session.execute(delete(ClubLeader))
-        await session.execute(delete(User))
-        await session.execute(delete(Club))
-        await session.commit()
+from tests.helpers import TZ, add_default_periods
+from tests.helpers import auth as _auth
+from tests.helpers import wipe_db as _wipe
 
 
 @pytest.fixture
@@ -96,15 +78,8 @@ async def env(client: AsyncClient) -> AsyncIterator[dict[str, str]]:
                 version_id=version.id,
             )
         )
-        period = Period(
-            name="2026-fall",
-            start_date=datetime(2026, 9, 1, tzinfo=TZ),
-            end_date=datetime(2027, 1, 1, tzinfo=TZ),
-            is_archived=False,
-            created_at=now,
-            updated_at=now,
-        )
-        session.add(period)
+        periods = await add_default_periods(session, now=now, names=("2026-fall",))
+        period = periods[0]
         await session.commit()
         yield {
             "leader": create_access_token(
@@ -117,10 +92,6 @@ async def env(client: AsyncClient) -> AsyncIterator[dict[str, str]]:
             "club_id": club.id,
         }
     await _wipe()
-
-
-def _auth(t: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {t}"}
 
 
 async def _create_report(

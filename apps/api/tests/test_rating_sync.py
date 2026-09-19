@@ -7,37 +7,20 @@ from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete, text
 from src.core.database import get_session_factory
 from src.core.security import create_access_token
 from src.models.entities import (
     Club,
-    ClubLeader,
     Criteria,
     CriteriaRule,
-    Period,
     Report,
-    ReportLink,
     RulesVersion,
     User,
 )
 from src.models.enums import ClubCategory, ReportStatus, UserRole
 
-
-async def _wipe() -> None:
-    factory = get_session_factory()
-    async with factory() as session:
-        await session.execute(text("TRUNCATE sudo_actions, audit_logs, archive_batches RESTART IDENTITY CASCADE"))
-        await session.execute(delete(ReportLink))
-        await session.execute(delete(Report))
-        await session.execute(delete(Period))
-        await session.execute(delete(CriteriaRule))
-        await session.execute(delete(Criteria))
-        await session.execute(delete(RulesVersion))
-        await session.execute(delete(ClubLeader))
-        await session.execute(delete(User))
-        await session.execute(delete(Club))
-        await session.commit()
+from tests.helpers import auth as _auth
+from tests.helpers import wipe_db as _wipe
 
 
 @pytest.fixture
@@ -137,7 +120,7 @@ async def test_sync_force_requires_moderator(
 
     ok = await client.post(
         "/api/admin/sync/force",
-        headers={"Authorization": f"Bearer {rating_env['mod']}"},
+        headers=_auth(rating_env["mod"]),
     )
     assert ok.status_code == 200
     assert ok.json()["data"]["status"] == "queued"
@@ -146,7 +129,7 @@ async def test_sync_force_requires_moderator(
 async def test_sync_status(client: AsyncClient, rating_env: dict[str, str]) -> None:
     resp = await client.get(
         "/api/admin/sync/status",
-        headers={"Authorization": f"Bearer {rating_env['mod']}"},
+        headers=_auth(rating_env["mod"]),
     )
     assert resp.status_code == 200
     assert resp.json()["data"]["debounceSeconds"] == 3600

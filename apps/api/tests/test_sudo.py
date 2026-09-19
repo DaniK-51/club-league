@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete, select, text
+from sqlalchemy import select
 from src.core.database import get_session_factory
 from src.core.security import create_access_token
 from src.models.entities import (
@@ -15,30 +15,14 @@ from src.models.entities import (
     ClubLeader,
     Criteria,
     CriteriaRule,
-    Period,
-    Report,
-    ReportLink,
     RulesVersion,
     SudoAction,
     User,
 )
 from src.models.enums import ClubCategory, UserRole
 
-
-async def _wipe() -> None:
-    factory = get_session_factory()
-    async with factory() as session:
-        await session.execute(text("TRUNCATE sudo_actions, audit_logs, archive_batches RESTART IDENTITY CASCADE"))
-        await session.execute(delete(ReportLink))
-        await session.execute(delete(Report))
-        await session.execute(delete(Period))
-        await session.execute(delete(CriteriaRule))
-        await session.execute(delete(Criteria))
-        await session.execute(delete(RulesVersion))
-        await session.execute(delete(ClubLeader))
-        await session.execute(delete(User))
-        await session.execute(delete(Club))
-        await session.commit()
+from tests.helpers import auth as _auth
+from tests.helpers import wipe_db as _wipe
 
 
 @pytest.fixture
@@ -106,10 +90,6 @@ async def sudo_env(client: AsyncClient) -> AsyncIterator[dict[str, str]]:
             "criteria_id": criteria.id,
         }
     await _wipe()
-
-
-def _auth(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
 
 
 async def _create_draft(client: AsyncClient, env: dict[str, str], *, submit: bool = False) -> str:

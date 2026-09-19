@@ -1,11 +1,12 @@
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,17 +39,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         client = request.client.host if request.client else "unknown"
         try:
             enforce_rate_limit("http", client)
-        except Exception as exc:
-            # api_error HTTPException
-            from fastapi import HTTPException
-
-            if isinstance(exc, HTTPException):
-                detail = exc.detail
-                body = detail if isinstance(detail, dict) else {
-                    "error": {"code": ErrorCode.RATE_LIMITED, "message": "Too many requests"}
-                }
-                return JSONResponse(status_code=exc.status_code, content=body)
-            raise
+        except HTTPException as exc:
+            detail = exc.detail
+            body = detail if isinstance(detail, dict) else {
+                "error": {"code": ErrorCode.RATE_LIMITED, "message": "Too many requests"}
+            }
+            return JSONResponse(status_code=exc.status_code, content=body)
         return await call_next(request)
 
 
@@ -95,7 +91,7 @@ def create_app() -> FastAPI:
             {"name": "users", "description": "Current user profile"},
             {"name": "reports", "description": "Report CRUD, submit, comments thread"},
             {"name": "moderation", "description": "Approve / changes / close / dispute / complete / archive"},
-            {"name": "admin", "description": "Sudo mode, Yandex sync, rules CRUD, audit"},
+            {"name": "admin", "description": "Sudo mode, Yandex sync, rules CRUD, audit, periods"},
             {"name": "rating", "description": "Public club rating and periods filter"},
             {"name": "criteria", "description": "Active v2 criteria catalog"},
         ],
@@ -163,7 +159,9 @@ def create_app() -> FastAPI:
         )
 
     @app.get("/health", response_model=ApiSuccess[HealthResponse], tags=["system"])
-    async def health(session: AsyncSession = Depends(get_db)) -> ApiSuccess[HealthResponse]:
+    async def health(
+        session: Annotated[AsyncSession, Depends(get_db)],
+    ) -> ApiSuccess[HealthResponse]:
         db_status: Literal["ok", "error"]
         try:
             await session.execute(text("SELECT 1"))
@@ -182,8 +180,6 @@ def create_app() -> FastAPI:
     app.include_router(admin_endpoints.criteria_router, prefix=settings.api_prefix)
     app.include_router(rating_endpoints.router, prefix=settings.api_prefix)
     app.include_router(rating_endpoints.public_router, prefix=settings.api_prefix)
-
-    from fastapi.openapi.utils import get_openapi
 
     def _custom_openapi() -> dict[str, Any]:
         if app.openapi_schema:

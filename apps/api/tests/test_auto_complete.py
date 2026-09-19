@@ -7,18 +7,15 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete, select, text
+from sqlalchemy import select
 from src.core.database import get_session_factory
 from src.core.security import create_access_token
 from src.models.entities import (
     AuditLog,
     Club,
-    ClubLeader,
     Criteria,
     CriteriaRule,
-    Period,
     Report,
-    ReportLink,
     RulesVersion,
     User,
 )
@@ -26,22 +23,7 @@ from src.models.enums import ClubCategory, ReportStatus, UserRole
 from src.services.archive_service import complete_approved_if_stale
 from src.services.auto_complete import start_auto_complete_timer, stop_auto_complete_timer
 
-
-async def _wipe() -> None:
-    factory = get_session_factory()
-    async with factory() as session:
-        await session.execute(text("TRUNCATE sudo_actions, audit_logs RESTART IDENTITY CASCADE"))
-        await session.execute(text("TRUNCATE archive_batches RESTART IDENTITY CASCADE"))
-        await session.execute(delete(ReportLink))
-        await session.execute(delete(Report))
-        await session.execute(delete(Period))
-        await session.execute(delete(CriteriaRule))
-        await session.execute(delete(Criteria))
-        await session.execute(delete(RulesVersion))
-        await session.execute(delete(ClubLeader))
-        await session.execute(delete(User))
-        await session.execute(delete(Club))
-        await session.commit()
+from tests.helpers import wipe_db as _wipe
 
 
 @pytest.fixture
@@ -89,10 +71,6 @@ async def env(client: AsyncClient) -> AsyncIterator[dict[str, object]]:
             "version_id": version.id,
         }
     await _wipe()
-
-
-def _auth(t: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {t}"}
 
 
 async def _make_approved(
