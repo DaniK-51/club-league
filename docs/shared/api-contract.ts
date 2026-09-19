@@ -302,20 +302,20 @@ export enum ErrorCode {
  * - Period — сущность в БД (name, startDate, endDate, isArchived).
  * - Report привязывается к Period по activity_date при create/update (start <= date < end).
  * - ReportResponse.periodName — имя периода или null (вне всех периодов).
+ * - GET /api/periods — public (no auth): all periods incl. isArchived, for rating filter.
  * - GET /api/admin/periods — moderator only; delete only when reportCount=0.
  * - GET /api/rating?period=<name>:
  *     1) Period table by name
  *     2) else semester_range() fallback ("YYYY-fall|spring|summer")
  *     3) else no date filter (all COMPLETED + ARCHIVED reports)
  *   Without params → last non-archived Period by startDate; if none → current_semester fallback.
- *   Rating counts COMPLETED + ARCHIVED (historical periods must stay stable after archive).
+ *   Rating statuses: COMPLETED + ARCHIVED (archived period totals stay stable after archive).
  * - POST /api/reports/archive?period=<name>:
  *     Period table ONLY (no semester fallback).
  *     404 PERIOD_NOT_FOUND if missing; 400 ALREADY_ARCHIVED if already archived.
  *     After batch: Period.isArchived = true.
  * - Approve: при calculation_method="manual" comment НЕ обязателен.
  * - Audit entity_type="period": actions created / updated / deleted (moderator CRUD).
- * - GET /api/periods — public list (active + archived) for rating period filter.
  *
  * KNOWN GAPS (documented, not bugs):
  * - POST /api/admin/sync/force accepts { semester } but debounced flush currently

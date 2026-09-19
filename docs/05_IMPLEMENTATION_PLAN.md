@@ -13,6 +13,7 @@
 - [x] **Шаг 10 (frontend requests):** Calculation method — `PATCH /api/reports/:id/calculation` (auto/manual + manualPoints + reason).
 - [x] **Шаг 11 (frontend requests):** Audit `display_data` JSONB + enrichment (camelCase keys for frontend).
 - [x] **Шаг 12 (frontend requests):** Periods — entity + CRUD `/admin/periods`, assignment by `activity_date`, `periodName`, rating/archive by Period; approve без comment при `calculation_method=manual`.
+- [x] **Шаг 13 (frontend requests):** Public `GET /api/periods` (без auth, active+archived) + rating считает COMPLETED+ARCHIVED (архивный период не пустеет).
 
 ### Known backend gaps (not blockers for MVP)
 - Rate limiter in-memory (not multi-instance).
@@ -29,7 +30,7 @@ Source on `feat/frontend` (this branch may only carry built `dist/`).
 - [x] **Шаг 2:** Настройка `api-client.ts` и TanStack Query. Интеграция SSO редиректа.
 - [x] **Шаг 3:** Форма создания отчёта для лидера: динамические поля по типу критерия, валидация ссылок, модальное окно "Странная дата" (soft warning).
 - [x] **Шаг 4:** Дашборд модератора: список отчётов, бейджи просрочки, interface изменения баллов. Comment обязателен для CHANGES_REQUIRED и auto-override; **не** обязателен при `calculationMethod=manual` (points уже через PATCH /calculation).
-- [x] **Шаг 5:** Публичная страница рейтинга (`/rating`) с фильтрацией по **периодам** (`GET /api/admin/periods` + `GET /api/rating?period=`) и категориям.
+- [x] **Шаг 5:** Публичная страница рейтинга (`/rating`) с фильтрацией по **периодам** (`GET /api/periods` public + `GET /api/rating?period=`), включая архивные.
 - [x] **Шаг 6:** Админ-панель: аудит, force sync, rules CRUD (JSONB), **вкладка Periods** (create/edit/delete/archive).
 - [x] **Шаг 7 (periods frontend):** Типы + `api-client` + hooks для Periods; вкладка Periods в админке; archive dialog с выбором периода; `periodName` на карточках; рейтинг `?period=`.
 
