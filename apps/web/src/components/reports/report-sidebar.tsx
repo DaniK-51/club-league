@@ -103,13 +103,6 @@ function ReportSidebarInner({ report, rule, criteriaName, onNavigateBack }: Repo
     status: 'APPROVED' | 'CHANGES_REQUIRED' | 'CLOSED'
   ) => {
     setActionError(null)
-    const needsComment =
-      status === 'CHANGES_REQUIRED' ||
-      (status === 'APPROVED' && finalPoints !== '')
-    if (needsComment && !comment.trim()) {
-      setActionError(t('moderation.commentRequired'))
-      return
-    }
     moderateReport.mutate(
       {
         id: report.id,
