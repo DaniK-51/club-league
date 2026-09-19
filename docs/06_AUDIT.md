@@ -67,9 +67,12 @@ JSONB-поле **специально для отображения на фро�
 | `comment` | `{ "title": "Comment", "summary": "Looks good" }` |
 | `deleted` | `{ "title": "Report deleted", "summary": "C8 deleted", "criteriaCode": "C8", ..., "reportData": {...} }` |
 | `sudo_action` | `{ "title": "Sudo: force_status", "summary": "DRAFT → COMPLETED", "criteriaCode": "C8", ..., "sudoAction": "force_status", "targetReportId": "uuid", "oldValue": {...}, "newValue": {...}, "reason": "..." }` |
-| `status_changed` (archive) | `{ "title": "Report archived", "summary": "Archived in period 2026-fall", "criteriaCode": "C8", ..., "period": "2026-fall", "batchId": "uuid" }` |
+| `status_changed` (archive) | `{ "title": "Report archived", "summary": "Archived in period 2026-fall", "criteriaCode": "C8", ..., "period": "2026-fall", "batchId": "uuid", "oldStatus": "COMPLETED", "newStatus": "ARCHIVED" }` |
 | `created` (user) | `{ "title": "User created", "summary": "GUEST", "email": "...", "role": "GUEST" }` |
 | `updated` (rule) | `{ "title": "Rule updated", "summary": "C8 tiered config updated", "rule_type": "tiered", "criteria_code": "C8" }` |
+| `created` (period) | `{ "title": "Period created", "summary": "2026-fall", "name": "2026-fall", "startDate": "...", "endDate": "..." }` |
+| `updated` (period) | `{ "title": "Period updated", "summary": "2026-fall", "name": "2026-fall" }` |
+| `deleted` (period) | `{ "title": "Period deleted", "summary": "2026-fall" }` |
 
 **Использование на фронтенде:**
 ```typescript
@@ -198,9 +201,12 @@ except ChainBrokenError as exc:
 |--------|--------|-------------|--------------|
 | `created` | report | `report_service.create_report` | Создан черновик отчёта |
 | `created` | user | `audit_service.log_user_created` | Новый пользователь при SSO-login |
+| `created` | period | `period_service.create_period` | Создан расчётный период |
 | `updated` | report | `report_service.update_report` | Изменён отчёт (данные/ссылки) |
 | `updated` | user | `audit_service.log_user_profile_updated` | Обновлён профиль (email/name из SSO) |
 | `updated` | rule | `criteria_service.update_rule` | Изменена конфигурация правила |
+| `updated` | period | `period_service.update_period` | Изменён период (name/startDate/endDate) |
+| `deleted` | period | `period_service.delete_period` | Удалён период (только без отчётов) |
 | `status_changed` | report | `report_service.submit_report` | DRAFT → ON_MODERATION |
 | `status_changed` | report | `moderation_service.moderate_report` | Approve / Changes Required / Close |
 | `status_changed` | report | `moderation_service.dispute_report` | APPROVED → DISPUTED |

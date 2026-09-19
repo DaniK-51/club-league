@@ -9,14 +9,28 @@
 - [x] **Шаг 6:** Логика модерации: переходы статусов, расчёт `finalPoints`, применение капов (включая combined cap C4+C5).
 - [x] **Шаг 7:** Sudo mode: форсированные переходы и восстановление удалённых отчётов с обязательным `reason`.
 - [x] **Шаг 8:** Sync Service: Debouncer (1 час) + клиент Yandex Disk WebDAV с retry логикой. Public rating + monthly caps + G1.
+- [x] **Шаг 9 (frontend requests):** Report detail API — `reportData` в response, moderator edit, `POST /comments`, тред из audit.
+- [x] **Шаг 10 (frontend requests):** Calculation method — `PATCH /api/reports/:id/calculation` (auto/manual + manualPoints + reason).
+- [x] **Шаг 11 (frontend requests):** Audit `display_data` JSONB + enrichment (camelCase keys for frontend).
+- [x] **Шаг 12 (frontend requests):** Periods — entity + CRUD `/admin/periods`, assignment by `activity_date`, `periodName`, rating/archive by Period; approve без comment при `calculation_method=manual`.
+
+### Known backend gaps (not blockers for MVP)
+- Rate limiter in-memory (not multi-instance).
+- `YANDEX_SHEETS_ENABLED` env name is legacy; client is WebDAV CSV.
+- `POST /admin/sync/force` accepts `semester` but flush uses current Period.
+- C7 frequency limit approximated as monthly point cap.
+- InnoHasle API — post-MVP.
+- Own-club moderator check intentionally **not** enforced (product decision).
+- i18n infrastructure present; UI language currently English-first.
 
 ## Frontend (/apps/web)
+Source on `feat/frontend` (this branch may only carry built `dist/`).
 - [ ] **Шаг 1:** Инициализация Vite + React + Tailwind + shadcn/ui. Настройка i18next (RU/EN).
 - [ ] **Шаг 2:** Настройка `api-client.ts` и TanStack Query. Интеграция SSO редиректа.
 - [ ] **Шаг 3:** Форма создания отчёта для лидера: динамические поля по типу критерия, валидация ссылок, модальное окно "Странная дата" (soft warning).
-- [ ] **Шаг 4:** Дашборд модератора: список отчётов, бейджи просрочки, интерфейс изменения баллов с обязательным комментарием.
-- [ ] **Шаг 5:** Публичная страница рейтинга (`/rating`) с фильтрацией по семестрам и категориям.
-- [ ] **Шаг 6:** Админ-панель: просмотр аудита, кнопка принудительной синхронизации с Яндексом, управление правилами (JSONB формы).
+- [ ] **Шаг 4:** Дашборд модератора: список отчётов, бейджи просрочки, interface изменения баллов. Comment обязателен для CHANGES_REQUIRED и auto-override; **не** обязателен при `calculationMethod=manual` (points уже через PATCH /calculation).
+- [ ] **Шаг 5:** Публичная страница рейтинга (`/rating`) с фильтрацией по **периодам** (`GET /api/admin/periods` + `GET /api/rating?period=`) и категориям.
+- [ ] **Шаг 6:** Админ-панель: аудит, force sync, rules CRUD (JSONB), **вкладка Periods** (create/edit/delete/archive).
 
 ## Правила выполнения (для ИИ-агента)
 1. Один шаг = один промпт. Не генерировать код для следующих шагов.

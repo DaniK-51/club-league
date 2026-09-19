@@ -20,7 +20,10 @@ export interface UpdateReportDTO {
 export interface ModerateReportDTO {
   status: 'APPROVED' | 'CHANGES_REQUIRED' | 'CLOSED';
   finalPoints?: number; // Если модератор меняет баллы
-  comment: string; // Обязателен при CHANGES_REQUIRED или override при auto; НЕ обязателен при calculationMethod=manual
+  // Backend default: "". Required for CHANGES_REQUIRED.
+  // Required for APPROVED/CLOSED only when finalPoints override auto calculatedPoints.
+  // NOT required when calculationMethod="manual" (trail lives in PATCH /calculation).
+  comment?: string;
 }
 
 export interface DisputeReportDTO {
@@ -190,6 +193,13 @@ export interface UpdatePeriodDTO {
   endDate?: string | null;
 }
 
+export interface ArchivePeriodResponse {
+  id: string;
+  period: string; // Period.name
+  reportCount: number;
+  archivedAt: string; // ISO datetime
+}
+
 export interface ApiSuccess<T> { data: T }
 export interface ApiError { error: { code: string; message: string } }
 
@@ -210,7 +220,7 @@ export interface ApiError { error: { code: string; message: string } }
 // POST   /api/reports/:id/complete     -> APPROVED → COMPLETED
 // PATCH  /api/reports/:id/calculation  -> SetCalculationDTO -> ReportResponse (модератор, без смены статуса)
 // POST   /api/reports/:id/comments     -> CreateCommentDTO -> CommentEntry (leader/moderator)
-// POST   /api/reports/archive?period=  -> batch COMPLETED/CLOSED → ARCHIVED (модератор)
+// POST   /api/reports/archive?period=  -> ArchivePeriodResponse (модератор; Period table only)
 // GET    /api/rating?period=&semester=  -> { clubs: RatingClub[] } (period приоритетнее)
 // POST   /api/admin/sync/force         -> { semester?: string } -> { status: 'queued' } (Только модератор)
 // GET    /api/admin/sync/status        -> SyncStatus
@@ -289,9 +299,25 @@ export enum ErrorCode {
  *
  * PERIODS:
  * - Period — сущность в БД (name, startDate, endDate, isArchived).
- * - Report привязывается к Period по activity_date при create/update.
- * - ReportResponse.periodName — имя периода или null.
- * - GET /api/rating?period=<name> фильтрует по Period; fallback на semester.
- * - Archive: Period.isArchived = true после batch-архивации.
+ * - Report привязывается к Period по activity_date при create/update (start <= date < end).
+ * - ReportResponse.periodName — имя периода или null (вне всех периодов).
+ * - GET /api/admin/periods — moderator only; delete only when reportCount=0.
+ * - GET /api/rating?period=<name>:
+ *     1) Period table by name
+ *     2) else semester_range() fallback ("YYYY-fall|spring|summer")
+ *     3) else no date filter (all COMPLETED reports)
+ *   Without params → last non-archived Period by startDate; if none → current_semester fallback.
+ * - POST /api/reports/archive?period=<name>:
+ *     Period table ONLY (no semester fallback).
+ *     404 PERIOD_NOT_FOUND if missing; 400 ALREADY_ARCHIVED if already archived.
+ *     After batch: Period.isArchived = true.
  * - Approve: при calculation_method="manual" comment НЕ обязателен.
+ * - Audit entity_type="period": actions created / updated / deleted (moderator CRUD).
+ *
+ * KNOWN GAPS (documented, not bugs):
+ * - POST /api/admin/sync/force accepts { semester } but debounced flush currently
+ *   recomputes rating for the current Period (get_current_period), not the forced semester.
+ * - C7 frequency limit is approximated as a monthly point cap in rating_caps.
+ * - S3 host-win modifier seed uses reportData.host_underdog >= 1
+ *   (catalog formula invited_teams < host_teams is the product rulebook; hybrid by design).
  */

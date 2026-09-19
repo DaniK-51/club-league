@@ -36,6 +36,7 @@ model Criteria {
   nameEn      String
   category    ClubCategory?    // NULL means common for all
   rules       CriteriaRule[]
+  reports     Report[]
 }
 
 model CriteriaRule {
@@ -115,7 +116,7 @@ model ReportLink {
 
 model ArchiveBatch {
   id          String   @id @default(uuid())
-  period      String   // "2026-fall"
+  period      String   // Period.name, e.g. "2026-fall" (string snapshot, not FK)
   archivedAt  DateTime @default(now())
   archivedById String
   reportCount Int
@@ -129,7 +130,7 @@ model AuditLog {
   hash            String   // SHA-256 текущей записи
   entityType      String   // "report", "rule", "user", "period"
   entityId        String
-  action          String   // "created", "updated", "status_changed", "points_updated", "deleted", "sudo_action", "comment", "calculation_updated"
+  action          String   // "created", "updated", "status_changed", "points_updated", "deleted", "sudo_action", "comment", "calculation_updated" (+ period created/updated/deleted)
   oldValue        Json?
   newValue        Json?
   displayData     Json?    // For frontend rendering (title, summary, old/new status, etc.)

@@ -97,6 +97,12 @@ cd apps/mock-sso && uv run pytest
 - Прямые `UPDATE`/`DELETE` к таблице аудита запрещены на уровне БД (`REVOKE`).
 - Sudo-действия требуют обязательного поля `reason` и отдельного логирования.
 
+## 📅 Расчётные периоды
+- Сущность `periods`: CRUD через `/api/admin/periods` (модератор).
+- Отчёты привязываются по `activity_date`; `ReportResponse.periodName`.
+- Рейтинг: `GET /api/rating?period=2026-fall`; архивация: `POST /api/reports/archive?period=...`.
+- Approve при `calculation_method=manual` не требует comment.
+
 ## 📊 Yandex Disk WebDAV (rating file mirror)
 
 Система — source of truth. На Диск выгружается **CSV-файл** рейтинга (overwrite).

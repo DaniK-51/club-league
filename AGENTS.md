@@ -9,7 +9,7 @@
 
 **Core users:**
 - **Club Leaders** (~40 clubs) — submit activity reports with external proof links
-- **Moderator** (1 person, @T_Konovalov) — reviews reports, adjusts points, archives periods
+- **Moderator** (1 person, @T_Konovalov) — reviews reports, adjusts points, manages Periods, archives by period
 - **Guests** — view public rating
 
 **Key principle:** The system is the **single source of truth**. Yandex Disk (WebDAV CSV) is a read-only mirror synced hourly.
@@ -238,6 +238,7 @@ Use one of these scopes (matches `/docs/03_STRUCTURE.md`):
 | `rules` | RulesEngine, rule types, Pydantic configs |
 | `moderation` | Status transitions, approve/reject/dispute |
 | `rating` | Rating calculation, caching, public page |
+| `periods` | Period entity, CRUD, report assignment, archive by period |
 | `sync` | Yandex Disk WebDAV sync, debouncer, retry, rating |
 | `audit` | Audit logs, hash chain, sudo actions |
 | `auth` | SSO integration, JWT, policies |

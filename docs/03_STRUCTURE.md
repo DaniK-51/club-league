@@ -46,6 +46,7 @@ apps/api/
       sync.py                   # SyncStatus, SyncQueued, RatingResponse
       criteria.py               # CriteriaOut, RuleOut, AuditLogOut
       period.py                 # PeriodOut, CreatePeriodDTO, UpdatePeriodDTO
+      # CommentEntry / CreateCommentDTO live in services/comments_service.py
     services/
       audit_service.py          # Hash chain, AuditService.log/log_sudo_action/verify_chain
       audit_query.py            # Admin audit list query
@@ -92,7 +93,8 @@ Dockerfile
 
 Open http://127.0.0.1:8080 after `docker compose up swagger`.
 
-## /apps/web — **not started** (Frontend steps 1–6 in 05_IMPLEMENTATION_PLAN.md)
+## /apps/web — Frontend (React SPA)
 
-Planned (React 18 + Vite + Tailwind + shadcn/ui + i18next):
-- SSO redirect, report form, moderator queue, public rating, admin panel
+Разработка ведётся на ветке `feat/frontend`. На `feat/backend` может лежать только собранный `dist/` (nginx).
+- SSO redirect, report form, moderator queue, public rating (by Period), admin panel (rules + Periods)
+- Контракт API: `docs/shared/api-contract.ts`
